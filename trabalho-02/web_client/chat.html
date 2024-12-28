@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat</title>
+    <style>
+        #chat {
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: 300px;
+            height: 400px;
+            overflow-y: scroll;
+        }
+
+        #message {
+            width: 80%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chat"></div>
+    <input type="text" id="message" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:9090');
+
+        ws.onopen = () => {
+
+            ws.send(JSON.stringify({ 'auth_token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjc2YzY2ODEzYzA1ZTdhZWYxNzI1NzRlIiwidXNlcm5hbWUiOiJjaGF0dWJhIiwiZXhwIjoxNzM1Mzk4NjI2fQ._zPO7YpjwxP64lk6GGHmb8YEFN4huwxM2NVKR2VlPw4' }));
+            console.log('Connected to the WebSocket server');
+            console.log('Connected to the WebSocket server');
+        };
+
+        ws.onmessage = (event) => {
+            const chat = document.getElementById('chat');
+            const message = document.createElement('div');
+            message.textContent = event.data;
+            chat.appendChild(message);
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected from the WebSocket server');
+        };
+
+        function sendMessage() {
+            const input = document.getElementById('message');
+            const message = input.value;
+            ws.send(message);
+            input.value = '';
+        }
+    </script>
+</body>
+
+</html>
