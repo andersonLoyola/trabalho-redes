@@ -4,13 +4,13 @@ import jwt
 import os
 import sqlite3
 
-from repository import UsersRepository
-from controllers import UsersController
+from repository import UsersRepository, ChatsRepository
+from controllers import UsersController,ChatsController
 from serializers import ChatSerializer, MessagesSerializer, SqliteSerializer
 # from routes import UserRoutes, ChatsRoutes
 from services import JwtService
 # from routes import ChatsRoutes
-from routes import TestRoutes, UserRoutes
+from routes import TestRoutes, UserRoutes, ChatsRoutes
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -41,17 +41,16 @@ conn.row_factory = SqliteSerializer.to_dict
 # messagesSerializer = MessagesSerializer()
 
 
-# chatsRepository = ChatsRepository(db)
+chatsRepository = ChatsRepository(conn)
 # chatsSerializer = ChatSerializer()
-# chatsController = ChatsController(
-#     jwtService, 
-#     chatsRepository, 
-#     messagesRepository, 
-#     userRepository, 
-#     chatsSerializer,
-#     messagesSerializer,
-# )
-# chatsRoutes = ChatsRoutes(app, chatsController)
+chatsController = ChatsController(
+    jwtService, 
+    chatsRepository, 
+    {}, 
+    {}, 
+    {},
+    {},
+)
 http_request_parser = HTTPRequestSerializer()
 http_router = HTTPRouter()
 
@@ -59,6 +58,7 @@ userRepository = UsersRepository(conn)
 usersController = UsersController(userRepository, jwtService)
 userRoutes = UserRoutes(http_router, usersController)
 
+chatsRoutes = ChatsRoutes(http_router, chatsController)
 
 
 test_routes = TestRoutes(http_router)
