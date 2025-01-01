@@ -1,10 +1,5 @@
 import traceback
 
-"""
-    user a connects with user b
-    a receives a_b connection and b receives b_a connection
-
-"""
 
 class ChatController():
 
@@ -22,7 +17,6 @@ class ChatController():
         # file_size = file_data['file_size'] define later
         file_data = file_data['file_data']
         self.file_storage_service.save_file(file_data, file_name)
-        
 
     def handle_group_message_request(self, client_socket, decoded_data):
         try:

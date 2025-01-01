@@ -2,16 +2,18 @@ import os
 import jwt
 import socket
 import threading
-from pymongo import MongoClient
+import sqlite3
+
 from services import JWtService, MessagesService, FileStorageService 
-from serializers import WebSocketSerializer
-from repository import ChatsRepository, MessagesRepository, UserConnectionsRepository
+from serializers import WebSocketSerializer, SqliteSerializer
+from repository import ChatsRepository, MessagesRepository
 from controllers import ChatController
 
-mongodb_url = os.getenv('MONGODB_URL')
-mongodb_name = os.getenv('MONGODB_NAME')
-mongo_client = MongoClient(mongodb_url)
-db = mongo_client[mongodb_name]
+
+chatuba_db = os.getenv('chatuba_db_path')
+sqlite_serializer = SqliteSerializer()
+db = sqlite3.connect(chatuba_db)
+db.row_factory = sqlite_serializer.to_dict
 
 app_host = os.getenv('chatuba_app_host')
 app_port = os.getenv('chatuba_app_port')
@@ -22,7 +24,6 @@ web_socket_serializer = WebSocketSerializer()
 
 chats_repository = ChatsRepository(db)
 messages_repository = MessagesRepository(db)
-user_connections_repository = UserConnectionsRepository(db)
 
 jwt_service = JWtService(secret_key, jwt)
 web_socket_serializer = WebSocketSerializer()

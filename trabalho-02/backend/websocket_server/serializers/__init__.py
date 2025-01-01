@@ -1,1 +1,2 @@
 from .web_socket_serializer import WebSocketSerializer
+from .sqlite_serializer import SqliteSerializer
