@@ -1,27 +1,41 @@
-from bson import ObjectId
+import uuid
 class UsersRepository():
-    def __init__(self, db):
-        self.collection = db['users']
+    def __init__(self, conn):
+        self.user_table_table = 'users'
+        self.conn = conn
 
-    def _map_users_info(self, users_cursor):
-        return [{"username": user['username'], "_id": str(user['_id'])} for user in list(users_cursor)]
-
+ 
     def get_user(self, username):
-        return self.collection.find_one({"username": username})
+        cursor = self.conn.cursor()
+        query = """
+            SELECT * FROM users u
+            WHERE u.username = :username
+        """
+        result = cursor.execute(query, (username,))
+        return result.fetchone()
+
     
     def get_users_by_ids(self, user_ids):
-        users_cursor =  self.collection.find(
-            {
-                "_id": {
-                    "$in": [ObjectId(user_id) for user_id in user_ids]
-                }
-            }, {"username": 1, "_id": 1}
-        )
-
-        return self._map_users_info(users_cursor)
+        masked_ids = [ '?' for (_) in user_ids]
+        cursor = self.conn.cursor()
+        query = f"""
+            SELECT 
+                id,
+                username
+            FROM users u
+            WHERE 
+                id IN  ({masked_ids.keys().join(',')})
+        """
+        results = cursor.execute(query, list(user_ids))
+        return results.fetchmany()
 
     def create_user(self, user):
-        return self.collection.insert_one({"username": user['username'], "password": user['password']})
-
-    def delete_user(self, user_id):
-        return self.collection.delete_one(user_id)
+        id = uuid.uuid4()
+        cursor = self.conn.cursor()
+        query = f""" 
+            INSERT INTO users
+            VALUES (?, ?, ?)
+        """
+        cursor.execute(query,(str(id), user['username'], user['password']))
+        self.conn.commit()
+        

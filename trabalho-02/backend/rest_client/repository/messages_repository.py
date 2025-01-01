@@ -1,4 +1,3 @@
-from bson import ObjectId
 
 class MessagesRepository:
     def __init__(self, db):

@@ -30,7 +30,7 @@ class HTTPRouter():
         return None
  
     # MAYBE INFER FROM RESOURCE_NAME FORM PATH LATER
-    def add_url_rule(self, name, path, handler_name, method, handler):
+    def add_url_rule(self, name, path, handler_name, handler, method):
         self.routes[method][path] = handler_name
         if name not in self.handlers:
             self.handlers[name] = {

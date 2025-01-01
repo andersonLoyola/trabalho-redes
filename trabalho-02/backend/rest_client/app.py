@@ -1,14 +1,16 @@
 from http.server import HTTPServer
 from infra import HTTPRequestHandler, HTTPRequestSerializer, HTTPRouter
-
+import jwt
 import os
-# from repository import ChatsRepository, UsersRepository, MessagesRepository
-# from controllers import UsersController, ChatsController
-# from serializers import ChatSerializer, MessagesSerializer
+import sqlite3
+
+from repository import UsersRepository
+from controllers import UsersController
+from serializers import ChatSerializer, MessagesSerializer, SqliteSerializer
 # from routes import UserRoutes, ChatsRoutes
-# from services import JwtService
+from services import JwtService
 # from routes import ChatsRoutes
-from routes import TestRoutes
+from routes import TestRoutes, UserRoutes
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +18,9 @@ load_dotenv()
 
 
 jwt_secret = os.getenv('jwt_secret')
-mongo_uri = os.getenv('mongo_uri')
+
+chatuba_db_path=os.getenv('chatuba_db_path')
+
 app_host = os.getenv('chatuba_app_host')
 app_port = os.getenv('chatuba_app_port')
 
@@ -25,14 +29,17 @@ chatuba_webclient_host = os.getenv('chatuba_webclient_host')
 
 
 
-# jwtService = JwtService(jwt, jwt_secret)
+jwtService = JwtService(jwt, jwt_secret)
+
+conn = sqlite3.connect(chatuba_db_path)
+
+
+
+conn.row_factory = SqliteSerializer.to_dict
 
 # messagesRepository = MessagesRepository(db)
 # messagesSerializer = MessagesSerializer()
 
-# userRepository = UsersRepository(db)
-# usersController = UsersController(userRepository, jwtService)
-# userRoutes = UserRoutes(app, usersController)
 
 # chatsRepository = ChatsRepository(db)
 # chatsSerializer = ChatSerializer()
@@ -47,6 +54,12 @@ chatuba_webclient_host = os.getenv('chatuba_webclient_host')
 # chatsRoutes = ChatsRoutes(app, chatsController)
 http_request_parser = HTTPRequestSerializer()
 http_router = HTTPRouter()
+
+userRepository = UsersRepository(conn)
+usersController = UsersController(userRepository, jwtService)
+userRoutes = UserRoutes(http_router, usersController)
+
+
 
 test_routes = TestRoutes(http_router)
 

@@ -9,6 +9,6 @@ class TestRoutes():
             'dumbus',
             '/api/V1/dumbus',
             'do_something',
+            lambda request: (200, {'message': 'hell world'}),
             'POST',
-            lambda request: (200, {'message': 'hell world'})
         )
