@@ -1,18 +1,16 @@
-from flask import request
-
 class ChatsRoutes():
-    def __init__(self, app, chats_controller):
-        self.app = app
+    def __init__(self, http_server, chats_controller):
+        self.http_server = http_server
         self.chats_controller = chats_controller
         self.add_routes()
 
     def add_routes(self):
-        # self.app.add_url_rule('/api/chats/<chat_id>', 'get_chat_details', self.chats_controller.get_chat_details, methods=['GET'])
-        # self.app.add_url_rule('/api/chats/<chat_id>/<user_id>', 'join_chat', self.chats_controller.join_chat, methods=['POST'])
-        self.app.add_url_rule('/api/chats/<chat_id>', 'add_chat_users', self.add_chat_users, methods=['POST'])
-        self.app.add_url_rule('/api/chats/<chat_id>', 'get_chat_details', self.get_chat_details, methods=['GET'])
-        self.app.add_url_rule('/api/chats', 'create_chat', self.create_chat, methods=['POST'])
-        self.app.add_url_rule('/api/chats', 'get_user_chats', self.get_user_chats, methods=['GET'])
+        # self.http_server.add_url_rule('/api/chats/<chat_id>', 'get_chat_details', self.chats_controller.get_chat_details, methods=['GET'])
+        # self.http_server.add_url_rule('/api/chats/<chat_id>/<user_id>', 'join_chat', self.chats_controller.join_chat, methods=['POST'])
+        self.http_server.add_url_rule('/api/chats/<chat_id>', 'add_chat_users', self.add_chat_users, methods=['POST'])
+        self.http_server.add_url_rule('/api/chats/<chat_id>', 'get_chat_details', self.get_chat_details, methods=['GET'])
+        self.http_server.add_url_rule('/api/chats', 'create_chat', self.create_chat, methods=['POST'])
+        self.http_server.add_url_rule('/api/chats', 'get_user_chats', self.get_user_chats, methods=['GET'])
     
 
     def create_chat(self):

@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "${workspaceFolder}/app.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "chatuba_http_server",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/simpleHttpServer.py",
+            "console": "integratedTerminal"
         }
     ]
 }

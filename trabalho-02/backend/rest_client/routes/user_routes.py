@@ -1,4 +1,4 @@
-from flask import request
+
 
 class UserRoutes():
     def __init__(self, app, usersController):

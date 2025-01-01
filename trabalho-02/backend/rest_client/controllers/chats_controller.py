@@ -1,4 +1,3 @@
-from flask import jsonify
 from jwt  import InvalidTokenError, ExpiredSignatureError
 import traceback
 

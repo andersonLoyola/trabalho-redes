@@ -1,0 +1,82 @@
+"""
+    A SIMPLE CUSTOM HTTP SERVER CREATED TO HANDLE REQUEST FOR THE CHATUBA CHAT API
+    HEAVILTY INSPIRED BY: https://gist.github.com/dfrankow/f91aefd683ece8e696c26e183d696c29
+"""
+
+import json
+import re
+import threading
+from email.message import EmailMessage
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib import parse
+
+
+def _parse_header(content_type):
+    m = EmailMessage()
+    m["content-type"] = content_type
+    return m.get_content_type(), m["content-type"].params
+
+
+class LocalData(object):
+    records = {}
+import re
+
+def match_route(path, routes):
+    for route, handler in routes.items():
+        pattern = re.sub(r'<[^/]+>', r'([^/]+)', route)
+        match = re.match(f'^{pattern}$', path)
+        if match:
+            return handler, match.groups()
+    return None, None
+
+class HTTPRequestHandler(BaseHTTPRequestHandler):
+
+    routes = {
+        'GET': {
+           '/dumbus':  'get_all', 
+           '/dumbus/<id>': 'get_one',
+           '/dumbus/<id>/<other_id>': 'get_one_details',
+        }    
+    }
+
+    handlers = {
+        'get_all': lambda : print('get_all'),
+        'get_one': lambda _: print('get_one')
+    }
+
+    def _match_route(self, method, path):
+        return match_route(path, self.routes.get(method, {}))           
+
+    def do_POST(self):
+        if re.search("/api/v1/addrecord/*", self.path):
+            ctype, pdict = _parse_header(self.headers.get("content-type"))
+            if ctype == "application/json":
+                length = int(self.headers.get("content-length"))
+                rfile_str = self.rfile.read(length).decode("utf8")
+                data = parse.parse_qs(rfile_str, keep_blank_values=True)
+                record_id = self.path.split("/")[-1]
+                LocalData.records[record_id] = data
+                print("addrecord %s: %s" % (record_id, data))
+                self.send_response(HTTPStatus.OK)
+            else:
+                self.send_response(
+                    HTTPStatus.BAD_REQUEST, "Bad Request: must give data"
+                )
+        else:
+            self.send_response(HTTPStatus.FORBIDDEN)
+
+        self.end_headers()
+
+    def do_GET(self):
+        handler_name, params = self._match_route('GET', self.path)
+        if handler_name:
+           self.handlers[handler_name](*params)
+        else:
+            self.send_response(HTTPStatus.NOT_FOUND)
+            self.end_headers()
+
+   
+
+if __name__ == "__main__":
+    main()
