@@ -3,11 +3,10 @@ import jwt
 import socket
 import threading
 from pymongo import MongoClient
-from services.jwt_service import JWtService
-from controllers.chat_controller import ChatController
-from repository.messages_repository import MessagesRepository
-from repository.user_connections_repository import UserConnectionsRepository
-from services.web_socket_utils import WebSocketUtilsService
+from services import JWtService, MessagesService, FileStorageService 
+from serializers import WebSocketSerializer
+from repository import ChatsRepository, MessagesRepository, UserConnectionsRepository
+from controllers import ChatController
 
 mongodb_url = os.getenv('MONGODB_URL')
 mongodb_name = os.getenv('MONGODB_NAME')
@@ -19,19 +18,21 @@ app_port = os.getenv('chatuba_app_port')
 
 secret_key = os.getenv('JWT_SECRET')
 
+web_socket_serializer = WebSocketSerializer()
 
-user_connections_repository = UserConnectionsRepository(db)
+chats_repository = ChatsRepository(db)
 messages_repository = MessagesRepository(db)
+user_connections_repository = UserConnectionsRepository(db)
 
 jwt_service = JWtService(secret_key, jwt)
-
-websocket_utils_service = WebSocketUtilsService()
-
+web_socket_serializer = WebSocketSerializer()
+messages_service = MessagesService(messages_repository, web_socket_serializer)
+file_storage_service = FileStorageService(app_host, app_port)
 chat_controller = ChatController(
-    user_connections_repository, 
-    messages_repository,
-    websocket_utils_service, 
-    jwt_service
+    chats_repository,
+    messages_service,
+    jwt_service,
+    file_storage_service,
 )
 
 def start_server():
@@ -41,7 +42,7 @@ def start_server():
     print(f'Server is listening on port {app_port}')
 
     while True:
-        client_socket, addr = server_socket.accept()
+        client_socket, addr = server_socket.accept()        
         print(f'Accepted connection from {addr}')
         client_handler = threading.Thread(target=chat_controller.handle_client, args=(client_socket,))
         client_handler.start()

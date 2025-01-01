@@ -2,7 +2,7 @@ import json
 import base64
 import hashlib
 
-class WebSocketUtilsService():
+class WebSocketSerializer():
 
     FIN_EXTRACTION_MASK = 0b10000000 
     MASK_EXTRACTION_BYTE = 0b10000000
@@ -53,8 +53,7 @@ class WebSocketUtilsService():
         NOTE: we ae working with bytearrays here, so each index equals to a 
         byte  
     """    
-    def socket_frame_handler(self, data):
-
+    def decode_socket_frame(self, data):
         first_byte = data[0]
         """ 
             bitwise  if both bits are 1 then i returns 1 else returns 0. 
@@ -87,7 +86,6 @@ class WebSocketUtilsService():
                 AND: the following 8 bytes must be interpreted as a 64-bit unsigned
                     integer, and they must be interpreted as the payload length
         """
-
         if payload_length == 126:
             extended_payload_length = data[2:4] 
             # we use byteorder big here cause the MSB is in the beginning of the array
@@ -107,3 +105,34 @@ class WebSocketUtilsService():
         message_bytes = bytearray([payload_data[i] ^ masking_key[i % 4] for i in range(payload_length)])
         message = message_bytes.decode('utf-8')
         return json.loads(message)
+    """
+        https://stackoverflow.com/questions/8125507/how-can-i-send-and-receive-websocket-messages-on-the-server-side
+        https://stackoverflow.com/questions/40664747/python-encode-web-socket-frames
+    """
+    def encode_socket_frame(self, message):
+        raw_binary_message = json.dumps(message).encode('utf-8')
+    
+        bytesFormatted = []
+        bytesFormatted.append(129)
+
+        bytesLength = len(raw_binary_message)
+        if bytesLength <= 125 :
+            bytesFormatted.append(bytesLength)
+        elif bytesLength >= 126 and bytesLength <= 65535 :
+            bytesFormatted.append(126)
+            bytesFormatted.append( ( bytesLength >> 8 ) & 255 )
+            bytesFormatted.append( bytesLength & 255 )
+        else :
+            bytesFormatted.append( 127 )
+            bytesFormatted.append( ( bytesLength >> 56 ) & 255 )
+            bytesFormatted.append( ( bytesLength >> 48 ) & 255 )
+            bytesFormatted.append( ( bytesLength >> 40 ) & 255 )
+            bytesFormatted.append( ( bytesLength >> 32 ) & 255 )
+            bytesFormatted.append( ( bytesLength >> 24 ) & 255 )
+            bytesFormatted.append( ( bytesLength >> 16 ) & 255 )
+            bytesFormatted.append( ( bytesLength >>  8 ) & 255 )
+            bytesFormatted.append( bytesLength & 255 )
+
+        bytesFormatted = bytes(bytesFormatted)
+        bytesFormatted = bytesFormatted + raw_binary_message
+        return bytesFormatted

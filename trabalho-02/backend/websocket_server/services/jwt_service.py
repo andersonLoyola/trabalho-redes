@@ -5,5 +5,5 @@ class JWtService():
         self.algorithm = 'HS256'
         self.jwt_client = jwt_client
     
-    def verify_token(self, token):
+    def decode_token(self, token):
         return self.jwt_client.decode(token, self.secret_key, algorithms=[self.algorithm])

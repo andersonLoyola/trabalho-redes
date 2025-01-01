@@ -13,7 +13,7 @@ class JwtService():
         access_token = self.jwt_client.encode({ 
             "user_id": id, 
             'username': username,
-            'exp' : datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+            'exp' : datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=120)
         }, self.jwt_secret, algorithm='HS256')
         
         refresh_token = self.jwt_client.encode({ 
@@ -24,3 +24,7 @@ class JwtService():
         }, self.jwt_secret, algorithm='HS256')
 
         return { "access_token": access_token, "refresh_token": refresh_token }
+
+
+    def decode_token(self, token):
+        return self.jwt_client.decode(token, self.jwt_secret, algorithms=['HS256'])

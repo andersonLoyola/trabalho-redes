@@ -26,12 +26,12 @@
     <button onclick="sendMessage()">Send</button>
 
     <script>
+
+        const authToken = window.localStorage.getItem('access_token');
         const ws = new WebSocket('ws://localhost:9090');
 
         ws.onopen = () => {
-
-            ws.send(JSON.stringify({ 'auth_token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjc2YzY2ODEzYzA1ZTdhZWYxNzI1NzRlIiwidXNlcm5hbWUiOiJjaGF0dWJhIiwiZXhwIjoxNzM1Mzk4NjI2fQ._zPO7YpjwxP64lk6GGHmb8YEFN4huwxM2NVKR2VlPw4' }));
-            console.log('Connected to the WebSocket server');
+            ws.send(JSON.stringify({ 'auth_token': authToken }));
             console.log('Connected to the WebSocket server');
         };
 
@@ -48,8 +48,11 @@
 
         function sendMessage() {
             const input = document.getElementById('message');
-            const message = input.value;
-            ws.send(message);
+            const data = JSON.stringify({
+                acess_token: authToken,
+                message: input.value
+            });
+            ws.send(data);
             input.value = '';
         }
     </script>

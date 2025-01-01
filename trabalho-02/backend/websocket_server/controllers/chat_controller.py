@@ -1,99 +1,123 @@
-import json
+import traceback
+
+"""
+    user a connects with user b
+    a receives a_b connection and b receives b_a connection
+
+"""
 
 class ChatController():
 
-    def __init__(
-            self, 
-            user_connections_repository, 
-            messages_repository, 
-            websocket_utils_service, 
-            jwt_service
-        ):
+    def __init__(self, chats_repository, messages_service, jwt_service, file_storage_service):
         self.connections = {}
         self.jwt_service = jwt_service
-        self.messages_repository = messages_repository
-        self.user_connections_repository = user_connections_repository
-        self.websocket_utils_service = websocket_utils_service
-
+        self.chats_repository = chats_repository
+        self.messages_service = messages_service
+        self.file_storage_service = file_storage_service
+        self.MAX_CONNECTIONS = 5
     
-    def load_messages(self, client_socket, sender, receiver):
-        messages = self.messages_repository.get_messages(sender, receiver)
-        for message in messages:
-            client_socket.send(json.dumps(message).encode('utf-8'))
 
-
-    def receive_message(self, client_socket):
-        buffer_size = 1024 # TODO: maybe put this in a config file
-        """
-            IMPORTANT: this initially has the socket frame parts combined  
-            SEE: https://datatracker.ietf.org/doc/html/rfc6455#section-3
-        """
-        message_parts = bytearray() 
-        while True:
-            part = client_socket.recv(buffer_size)
-            message_parts.extend(part)
-            if len(part) < buffer_size:
-                break
-
-        message_dict = self.websocket_utils_service.socket_frame_handler(message_parts)     
+    def handle_file_upload_request(self, file_data):
+        file_name = file_data['file_name']
+        # file_size = file_data['file_size'] define later
+        file_data = file_data['file_data']
+        self.file_storage_service.save_file(file_data, file_name)
         
-        return message_dict
-    
-    def handle_client(self,  client_socket):
-        self.websocket_utils_service.handshake(client_socket)
-        
-        decoded_message = self.receive_message(client_socket)
 
-        if not decoded_message['auth_token']:
-            client_socket.send('missing token')
-            client_socket.close()
-            return
-        
+    def handle_group_message_request(self, client_socket, decoded_data):
         try:
-            decoded_token = self.jwt_service.verify_token(decoded_message['auth_token'])
+            chat = self.chats_repository.get_chat_participants(decoded_data['chat_id'])
+            if decoded_data['attachment'] != '':
+                self.handle_file_upload_request(decoded_data['attachment'])
+                decoded_data['attachment'] = self.file_storage_service.generate_attachment_link(decoded_data['attachment'])
+            chat_id = decoded_data['chat_id']
+            for participant_id in chat['users']:
+                if participant_id in self.connections and participant_id != decoded_data['sender_id']:
+                    receiver_id = f'{participant_id}_{chat_id}'
+                    receiver_socket = self.connections[chat_id][receiver_id]
+                    self.messages_service.send_messaage(receiver_socket, decoded_data)
+            self.messages_service.send_message(client_socket, decoded_data)
+            self.messages_service.store_messages(
+                decoded_data['sender_id'], 
+                decoded_data['chat_id'], 
+                decoded_data['content'], 
+                decoded_data['attachment']
+            )
         except Exception as e:
-            client_socket.send('invalid token')
-            client_socket.close()
+            traceback.print_stack()
+            print(e)
             return
-        
-        username = decoded_token['username']
-        user_id = decoded_token['user_id']
-        user_already_in_chat = self.user_connections_repository.get_user_connections(user_id)           
 
-        # if user is not in the chat we load the previous messages
-        # however idk how it should behave if we are joining  a room
-        if not user_already_in_chat:
-            self.load_messages(client_socket, user_id, user_id)
-            return
-        
-        while True:
-            message = self.receive_message(client_socket)
-            if not message:
-                break
-            self.messages_repository.add_message(user_id, user_id, message)
-            self.broadcast_message(username, message)
-        
-        self.user_connections_repository.remove_connection(user_id)
-        client_socket.close()
-        
+    def handle_private_message_request(self, client_socket, decoded_data):
+        receiver_id = decoded_data['receiver_id']
+        sender_id = decoded_data['sender_id']
+        self.messages_service.send_message(client_socket, decoded_data)
+        if receiver_id in self.connections:
+            receiver_socket = self.connections[receiver_id][f'{receiver_id}_{sender_id}']
+            self.messages_service.send_message(receiver_socket, decoded_data) 
+        self.messages_service.store_messages(
+            decoded_data['sender_id'], 
+            decoded_data['receiver_id'], 
+            decoded_data['content'], 
+            decoded_data['attachment']
+        )
 
-    def broadcast_messages(self, user_id, message):
-        for connection in self.connections.values():
-            connection.send(json.dumps({
-                'sender': user_id,
-                'message': message
-            }).encode('utf-8'))
-
-    def private_messages(self, username, receiver, message, attachments):
-        receiver_socket = self.connections.get(receiver)
-        
-        if not receiver_socket:
-            return
-        
-        receiver_socket.send(json.dumps({
-            'sender': username,
-            'message': message,
-            'attachments': attachments
-        }).encode('utf-8'))
-
+    def handle_auth_request(self, decoded_data, client_socket):
     
+        token = decoded_data['auth_token']
+        decoded_token = self.jwt_service.decode_token(token)
+            
+        if not decoded_token:
+            self.messages_service.send_message(client_socket, {'error': 'Invalid token'})
+            self.handle_disconnect_request(client_socket)
+            return
+        if len(self.connections) > self.MAX_CONNECTIONS:
+            self.messages_service.send_message(client_socket, {'error': 'max connections reached'})
+            self.handle_disconnect_request(client_socket)
+            return   
+             
+        self.connections[decoded_token['user_id']] = {
+            'username': decoded_token['username'],
+            'connection': client_socket
+        }
+        
+    def handle_disconnect_request(self, client_socket):
+        self.messages_service.send_message(client_socket, {'message': 'disconnected'})
+        for user_id in self.connections:
+            if self.connections[user_id]['socket'] == client_socket:
+                del self.connections[user_id]
+                break
+        client_socket.close()
+
+    def handle_client(self,  client_socket = {}):
+        try:
+
+            self.messages_service.receive_handshake_message(client_socket)
+
+            while True:
+                decoded_data = self.messages_service.receive_message(client_socket)
+                if not decoded_data:
+                    continue
+                if decoded_data['request_type'] == 'auth':
+                   self.handle_auth_request(decoded_data, client_socket)
+                elif decoded_data['request_type'] == 'duo_message':
+                    self.handle_private_message_request(client_socket,decoded_data)
+                elif decoded_data['request_type'] == 'disconnect':
+                    if decoded_data['user_id'] in self.connections:
+                        self.handle_disconnect_request(client_socket)
+                elif decoded_data['request_type'] == 'group_message':
+                    self.handle_group_message_request(client_socket, decoded_data)
+        except (ConnectionResetError, ConnectionAbortedError) as e:
+            traceback.print_stack()
+            self.handle_disconnect_request(client_socket)
+            print(e)
+            return 
+
+        except Exception as e:
+            traceback.print_stack()   
+            print(e)
+            return
+
+        
+           
+        
