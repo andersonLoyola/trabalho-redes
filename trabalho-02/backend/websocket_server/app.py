@@ -1,39 +1,45 @@
 import os
-import jwt
 import socket
 import threading
-import sqlite3
+from dotenv import load_dotenv
 
-from services import JWtService, MessagesService, FileStorageService 
-from serializers import WebSocketSerializer, SqliteSerializer
-from repository import ChatsRepository, MessagesRepository
+from services import MessagesService, FileStorageService, AuthService, ConnectionsService 
+from serializers import WebSocketSerializer, CryptoSerializer
+from repository import ChatsRepository, MessagesRepository, UsersRepository
 from controllers import ChatController
 
+load_dotenv()
 
 chatuba_db = os.getenv('chatuba_db_path')
-sqlite_serializer = SqliteSerializer()
-db = sqlite3.connect(chatuba_db)
-db.row_factory = sqlite_serializer.to_dict
 
 app_host = os.getenv('chatuba_app_host')
 app_port = os.getenv('chatuba_app_port')
 
 secret_key = os.getenv('JWT_SECRET')
 
+
+
 web_socket_serializer = WebSocketSerializer()
 
-chats_repository = ChatsRepository(db)
-messages_repository = MessagesRepository(db)
+chats_repository = ChatsRepository(chatuba_db)
+messages_repository = MessagesRepository(chatuba_db)
+users_repository = UsersRepository(chatuba_db)
 
-jwt_service = JWtService(secret_key, jwt)
+auth_service = AuthService(users_repository)
 web_socket_serializer = WebSocketSerializer()
-messages_service = MessagesService(messages_repository, web_socket_serializer)
+crypto_serializer = CryptoSerializer('TXshgL49Sfj0GXjEU7IWjpY/9+pVHAmD3eW/29hRK1U=')
+
 file_storage_service = FileStorageService(app_host, app_port)
+
 chat_controller = ChatController(
-    chats_repository,
-    messages_service,
-    jwt_service,
-    file_storage_service,
+    auth_service=AuthService(users_repository),
+    connections_service=ConnectionsService(chats_repository),
+    file_storage_service=FileStorageService(app_host, app_port),
+    messages_service=MessagesService(
+        messages_repository, 
+        web_socket_serializer,
+        crypto_serializer,
+    ),
 )
 
 def start_server():

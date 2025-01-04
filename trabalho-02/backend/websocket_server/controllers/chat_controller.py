@@ -1,106 +1,105 @@
 import traceback
-
-
 class ChatController():
 
-    def __init__(self, chats_repository, messages_service, jwt_service, file_storage_service):
-        self.connections = {}
-        self.jwt_service = jwt_service
-        self.chats_repository = chats_repository
+    def __init__(self, messages_service, file_storage_service, connections_service, auth_service):
+        self.auth_service = auth_service
         self.messages_service = messages_service
+        self.connections_service = connections_service
         self.file_storage_service = file_storage_service
-        self.MAX_CONNECTIONS = 5
+        # ---- DISABLE THIS TO PREVENT USING DB DATA ---- #
+        self.connections_service.preload_chat_conns()
+
+
+    def handle_signup_request(self, decoded_data, client_socket):
+        response = self.auth_service.handle_signup_request(decoded_data)
+        self.messages_service.send_message(client_socket, response)
     
-
-    def handle_file_upload_request(self, file_data):
-        file_name = file_data['file_name']
-        # file_size = file_data['file_size'] define later
-        file_data = file_data['file_data']
-        self.file_storage_service.save_file(file_data, file_name)
-
-    def handle_group_message_request(self, client_socket, decoded_data):
-        try:
-            chat = self.chats_repository.get_chat_participants(decoded_data['chat_id'])
-            if decoded_data['attachment'] != '':
-                self.handle_file_upload_request(decoded_data['attachment'])
-                decoded_data['attachment'] = self.file_storage_service.generate_attachment_link(decoded_data['attachment'])
-            chat_id = decoded_data['chat_id']
-            for participant_id in chat['users']:
-                if participant_id in self.connections and participant_id != decoded_data['sender_id']:
-                    receiver_id = f'{participant_id}_{chat_id}'
-                    receiver_socket = self.connections[chat_id][receiver_id]
-                    self.messages_service.send_messaage(receiver_socket, decoded_data)
-            self.messages_service.send_message(client_socket, decoded_data)
-            self.messages_service.store_messages(
-                decoded_data['sender_id'], 
-                decoded_data['chat_id'], 
-                decoded_data['content'], 
-                decoded_data['attachment']
-            )
-        except Exception as e:
-            traceback.print_stack()
-            print(e)
-            return
-
-    def handle_private_message_request(self, client_socket, decoded_data):
-        receiver_id = decoded_data['receiver_id']
-        sender_id = decoded_data['sender_id']
-        self.messages_service.send_message(client_socket, decoded_data)
-        if receiver_id in self.connections:
-            receiver_socket = self.connections[receiver_id][f'{receiver_id}_{sender_id}']
-            self.messages_service.send_message(receiver_socket, decoded_data) 
-        self.messages_service.store_messages(
-            decoded_data['sender_id'], 
-            decoded_data['receiver_id'], 
-            decoded_data['content'], 
-            decoded_data['attachment']
-        )
-
     def handle_auth_request(self, decoded_data, client_socket):
-    
-        token = decoded_data['auth_token']
-        decoded_token = self.jwt_service.decode_token(token)
-            
-        if not decoded_token:
-            self.messages_service.send_message(client_socket, {'error': 'Invalid token'})
-            self.handle_disconnect_request(client_socket)
-            return
-        if len(self.connections) > self.MAX_CONNECTIONS:
-            self.messages_service.send_message(client_socket, {'error': 'max connections reached'})
-            self.handle_disconnect_request(client_socket)
-            return   
-             
-        self.connections[decoded_token['user_id']] = {
-            'username': decoded_token['username'],
-            'connection': client_socket
-        }
+        response = self.auth_service.handle_auth_request(decoded_data)
+        user_data = response['user']
+        if 'error' in response:
+            self.messages_service.send_message(client_socket, response)
+
+        response = self.connections_service.has_connections_available()
+        if 'error' in response:
+            self.messages_service.send_message(client_socket, response)
         
+        response = self.connections_service.add_connection(user_data, client_socket)
+        response['user'] = user_data
+        self.messages_service.send_message(client_socket, response)
+
+    def handle_available_connections(self, decoded_data, client_socket):
+        response = self.connections_service.get_available_chats()
+        self.messages_service.send_message(client_socket, response)
+    
+    def handle_available_users(self, decoded_data, client_socket):
+        response = self.connections_service.get_available_users()
+        self.messages_service.send_message(client_socket, response)
+
+    def handle_send_message(self, decoded_data, client_socket):
+        del decoded_data['request_type']
+        decoded_data['response_type'] = 'message'
+        
+        if decoded_data['attachment']:
+            file = decoded_data['attachment']
+            file_path = self.file_storage_service.save_file(file)
+            decoded_data['attachment'] = file_path
+        if 'chat_id' in decoded_data:
+            #TODO: add verification for group chat later
+            found_chat = self.connections_service.get_chat_connection(decoded_data['chat_id'])
+            for subscriber_id in found_chat['subscribers']:
+                receiver = self.connections_service.get_user_connection(subscriber_id)
+                if receiver != None and 'socket' in receiver:
+                    self.messages_service.send_message(receiver['socket'], decoded_data)
+        elif 'user_id' in decoded_data:
+            found_user = self.connections_service.get_user_connection(decoded_data['user_id'])
+            self.messages_service.send_message(found_user['socket'], decoded_data)
+        self.messages_service.send_message(client_socket, decoded_data)
+
+    def handle_create_group_connection(self, decoded_data, client_socket):
+        response = self.connections_service.create_group_connection(decoded_data)
+        self.messages_service.send_message(client_socket, response)
+
+    def handle_join_group_connection(self, decoded_data, client_socket):
+        response = self.connections_service.join_group_connection(decoded_data)
+        self.messages_service.send_message(client_socket, response)
+    
+    def handle_left_group_connection(self, decoded_data, client_socket):
+        response = self.connections_service.join_left_connection(decoded_data)
+        self.messages_service.send_message(client_socket, response)
+
     def handle_disconnect_request(self, client_socket):
-        self.messages_service.send_message(client_socket, {'message': 'disconnected'})
-        for user_id in self.connections:
-            if self.connections[user_id]['socket'] == client_socket:
-                del self.connections[user_id]
-                break
+        self.connections_service.remove_user_connection(client_socket)
         client_socket.close()
 
     def handle_client(self,  client_socket = {}):
         try:
-
             self.messages_service.receive_handshake_message(client_socket)
-
             while True:
                 decoded_data = self.messages_service.receive_message(client_socket)
                 if not decoded_data:
-                    continue
+                    return
+                if decoded_data['request_type'] == 'signup':
+                    self.handle_signup_request(decoded_data, client_socket)
                 if decoded_data['request_type'] == 'auth':
                    self.handle_auth_request(decoded_data, client_socket)
-                elif decoded_data['request_type'] == 'duo_message':
-                    self.handle_private_message_request(client_socket,decoded_data)
+                elif decoded_data['request_type'] == 'create_group_connection':
+                    self.handle_create_group_connection(decoded_data, client_socket)
+                elif decoded_data['request_type'] == 'available_chats':
+                    self.handle_available_connections(decoded_data,client_socket)
+                elif decoded_data['request_type'] == 'available_users':
+                    self.handle_available_users(decoded_data,client_socket)
+                elif decoded_data['request_type'] == 'message':
+                    self.handle_send_message(decoded_data, client_socket)
+                elif decoded_data['request_type'] == 'join_group_connection':
+                    self.handle_join_group_connection(decoded_data, client_socket)
+                elif decoded_data['request_type'] == 'left_group_connection':
+                    self.handle_left_group_connection(decoded_data, client_socket)
                 elif decoded_data['request_type'] == 'disconnect':
-                    if decoded_data['user_id'] in self.connections:
-                        self.handle_disconnect_request(client_socket)
-                elif decoded_data['request_type'] == 'group_message':
-                    self.handle_group_message_request(client_socket, decoded_data)
+                    self.handle_disconnect_request(client_socket)
+                    return
+    
+                
         except (ConnectionResetError, ConnectionAbortedError) as e:
             traceback.print_stack()
             self.handle_disconnect_request(client_socket)
@@ -109,6 +108,8 @@ class ChatController():
 
         except Exception as e:
             traceback.print_stack()   
+            # decoded_data['error'] = e
+            self.messages_service.send_message(client_socket, decoded_data)
             print(e)
             return
 

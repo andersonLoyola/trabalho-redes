@@ -1,6 +1,6 @@
 import { createContext, useState } from "react";
 import { decodeJwt } from 'jose';
-import { LoginService } from "../services/AuthService";
+import { LoginService, SignupService } from "../services/AuthService";
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
@@ -23,12 +23,21 @@ export function AuthProvider({ children }) {
         }
     }
 
+    const signup = async (data) => {
+        try {
+            await SignupService(data.username, data.password); // MAYBE IMPLEMENT A LOGIN TO SEE IF IT WAS SUCCESSFUL
+        } catch (error) {
+            console.trace(error);
+            throw error;
+        }
+    }
+
     const logoff = () => {
         setToken(null)
     }
 
     return (
-        <AuthContext.Provider value={{ token, userId, userName, refreshToken, login, logoff }}>
+        <AuthContext.Provider value={{ token, userId, userName, refreshToken, login, logoff, signup }}>
             {children}
         </AuthContext.Provider>
     );

@@ -109,30 +109,31 @@ class WebSocketSerializer():
         https://stackoverflow.com/questions/8125507/how-can-i-send-and-receive-websocket-messages-on-the-server-side
         https://stackoverflow.com/questions/40664747/python-encode-web-socket-frames
     """
-    def encode_socket_frame(self, message):
-        raw_binary_message = json.dumps(message).encode('utf-8')
-    
-        bytesFormatted = []
-        bytesFormatted.append(129)
 
-        bytesLength = len(raw_binary_message)
-        if bytesLength <= 125 :
-            bytesFormatted.append(bytesLength)
-        elif bytesLength >= 126 and bytesLength <= 65535 :
-            bytesFormatted.append(126)
-            bytesFormatted.append( ( bytesLength >> 8 ) & 255 )
-            bytesFormatted.append( bytesLength & 255 )
-        else :
-            bytesFormatted.append( 127 )
-            bytesFormatted.append( ( bytesLength >> 56 ) & 255 )
-            bytesFormatted.append( ( bytesLength >> 48 ) & 255 )
-            bytesFormatted.append( ( bytesLength >> 40 ) & 255 )
-            bytesFormatted.append( ( bytesLength >> 32 ) & 255 )
-            bytesFormatted.append( ( bytesLength >> 24 ) & 255 )
-            bytesFormatted.append( ( bytesLength >> 16 ) & 255 )
-            bytesFormatted.append( ( bytesLength >>  8 ) & 255 )
-            bytesFormatted.append( bytesLength & 255 )
+    def encode_socket_frame(self, message, fin=True, opcode=1):
+        frame =  bytearray()
+        first_byte = (fin << 7) | opcode # shifts the fin bite to be the first of the byte
+        frame.append(first_byte)
+        message_length = len(message)
+        """
+            CONVETIONALY by the websocket spec:
+                IF payload_length <= 125 bytes:
+                    THE MESSAGE CONTENT CAN BE RETRIEVED DIRECTLY FROM THE SECOND BYte
+                IF > 125 AND <= 65535
+                    THE MESSAGE CONTENT CAN BE RETRIEVED FROM THE NEXT TWO BYTES
+                ELSE
+                    PAYLOAD IS ENCODED IN THE NEXT 8 BYTES
+        """
+        if message_length <= 125:
+            frame.append(message_length)
+        elif message_length <= 65535:
+            frame.append(126)
+            frame.extend(message_length.to_bytes(2, byteorder='big'))
+        else:
+            frame.append(127)
+            frame.extend(message_length.to_bytes(8, byteorder='big'))
 
-        bytesFormatted = bytes(bytesFormatted)
-        bytesFormatted = bytesFormatted + raw_binary_message
-        return bytesFormatted
+        masking_key = [0,0,0,0] # currently set to 0, meaning no mask for now
+        frame.extend(masking_key)
+        frame.extend(message)
+        return bytes(frame)

@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import { Chat } from './pages/Chat';
 import { ChatProvider } from './contexts/ChatContext';
 import { LoadingProvider } from './contexts/LoadingContext';
+import Signup from './pages/Signup';
 
 function PrivateRoute({ children }) {
   const { token } = useContext(AuthContext);
@@ -19,6 +20,7 @@ function App() {
         <LoadingProvider>
           <Router>
             <Routes>
+              <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
               <Route path="/home" element={<PrivateRoute><Home /></PrivateRoute>} />
               <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />

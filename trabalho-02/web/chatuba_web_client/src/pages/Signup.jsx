@@ -1,40 +1,38 @@
 import React, { useState, useContext } from 'react';
-import '../index.css'
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { LoadingContext } from '../contexts/LoadingContext';
 
-export default function Login() {
+export default function Signup() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
-    const { login } = useContext(AuthContext);
+    const { signup } = useContext(AuthContext);
     const { isLoading, setIsLoading } = useContext(LoadingContext);
 
     const navigate = useNavigate();
 
-    async function loginHandler() {
+    async function SignupHandler() {
         setIsLoading(true);
         try {
-            await login({ username, password });
-            navigate('/home');
+            await signup({ username, password });
+            navigate('/login');
         } catch (error) {
-            console.error('Failed to login:', error);
+            console.error('Failed to create user:', error);
         } finally {
             setIsLoading(false);
         }
-
     };
 
-    function signupHandler() {
-        navigate('/signup')
+    function loginHandler() {
+        navigate('/login')
     }
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             {isLoading ? (<h2> Loading...</h2>) :
                 (<div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
-                    <h2 className="text-2xl font-bold text-center">Login</h2>
+                    <h2 className="text-2xl font-bold text-center">Signup</h2>
                     <input
                         type="text"
                         id="username"
@@ -55,15 +53,15 @@ export default function Login() {
 
                     <button
                         className='w-full px-3 py-2 text-white bg-blue-500 rounded hover:bg-blue-700'
-                        onClick={loginHandler}
+                        onClick={SignupHandler}
                     >
-                        Login
+                        signup
                     </button>
                     <button
                         className='w-full px-3 py-2 text-white bg-blue-500 rounded hover:bg-blue-700'
-                        onClick={signupHandler}
+                        onClick={loginHandler}
                     >
-                        signup
+                        login
                     </button>
                 </div>)
             }

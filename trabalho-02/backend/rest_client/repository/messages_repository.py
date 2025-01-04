@@ -11,4 +11,4 @@ class MessagesRepository:
         """
         cursor = self.conn.cursor()
         results = cursor.execute(query, list(message_ids))
-        return results.fetchmany()
+        return results.fetchall()

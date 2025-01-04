@@ -18,15 +18,24 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     def set_http_router(cls, http_router):   
         cls.http_router = http_router
 
+    def do_OPTIONS(self):
+        self.send_response(200, "ok")
+        self.send_header("Access-Control-Allow-Origin", "http://localhost:5500")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
     
     def do_POST(self):
         request_obj =  self.http_request_parser.parse_request(self)
         try:
             (statusCode, data) = self.http_router.route_request(request_obj)
+            response_body = json.dumps(data).encode('utf-8')
             self.send_response(statusCode)
             self.send_header("Content-Type", "application/json")
+            self.send_header('Access-Control-Allow-Origin', 'http://localhost:5500')
+            self.send_header("Content-Length", str(len(response_body)))
             self.end_headers()
-            self.wfile.write(json.dumps(data).encode('utf-8'))
+            self.wfile.write(response_body)
         except Exception as e:
             print(e)
             self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -36,10 +45,13 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         request_obj =  self.http_request_parser.parse_request(self)
         try:
             (statusCode, data) = self.http_router.route_request(request_obj)
+            response_body = json.dumps(data).encode('utf-8')
             self.send_response(statusCode)
             self.send_header("Content-Type", "application/json")
+            self.send_header('Access-Control-Allow-Origin', 'http://localhost:5500')
+            self.send_header("Content-Length", str(len(response_body)))
             self.end_headers()
-            self.wfile.write(json.dumps(data).encode('utf-8'))
+            self.wfile.write(response_body)
         except:
             self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
             self.end_headers()
