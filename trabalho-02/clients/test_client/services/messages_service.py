@@ -35,7 +35,7 @@ class MessagesService():
             return False
         
     def receive_message(self, receiver_socket):
-        buffer_size = 1024 # TODO: maybe put this in a config file
+        buffer_size = 1024 * 256# TODO: maybe put this in a config file
         """
             IMPORTANT: this initially has the socket frame parts combined  
             SEE: https://datatracker.ietf.org/doc/html/rfc6455#section-3
@@ -46,7 +46,6 @@ class MessagesService():
             message_parts.extend(part)
             if len(part) < buffer_size:
                 break
-
         encrypted_message = self.websocket_serializer.decode_socket_frame(message_parts)     
         decrypted_message = self.crypto_serializer.decrypt(encrypted_message)
         return json.loads(decrypted_message)

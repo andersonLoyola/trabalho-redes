@@ -39,7 +39,7 @@ class AuthHandler:
                 os.system('cls')
                 return response
             elif response and 'error' in response:
-                print(response['error'])
+                input(response['error'])
                 self._login_request()
 
     def handle_signup(self):

@@ -13,14 +13,17 @@ class MessagesService():
         for i in range(0, len(msg_bytes), chunk_size):
             yield msg_bytes[i:i + chunk_size] # returns msg bytes from iindex till i index + chunk_size
 
-    def store_messages(self, sender, receiver, message, attachment):
-        self.chat_message_repository.create_message(sender, receiver, message, attachment)
+    def store_private_messages(self, sender_id, receiver_id, content, attachment):
+        self.chat_message_repository.create_private_message(sender_id, receiver_id, content, attachment)
+    
+    def store_group_messages(self, user_id, chat_id, receivers, content, attachment):
+        self.chat_message_repository.create_group_message(user_id, chat_id, receivers, content, attachment)
 
     def receive_handshake_message(self, receiver_socket):
         self.websocket_serializer.handshake(receiver_socket)  
     
     def receive_message(self, receiver_socket):
-        buffer_size = 1024 # TODO: maybe put this in a config file
+        buffer_size = 1024 * 256 # TODO: maybe put this in a config file
         """
             IMPORTANT: this initially has the socket frame parts combined  
             SEE: https://datatracker.ietf.org/doc/html/rfc6455#section-3

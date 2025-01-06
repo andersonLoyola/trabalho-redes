@@ -1,14 +1,18 @@
-import json
 class ConnectionsService: 
-
+    instance = None
+    
     def __init__(self, chats_repository, db_persistance = False):
-        self.users = {}
-        self.connections = {}
         self.MAX_CONNECTIONS = 50
         self.db_persistance = db_persistance
         self.chats_repository = chats_repository
 
- 
+    @classmethod
+    def get_instance(cls, chat_repository):
+        if not cls.instance:
+            cls.users = {}
+            cls.connections = {}
+            cls.instance = ConnectionsService(chat_repository)
+        return cls.instance
 
     #UPDATE TO HANDLE EMPTY GROUP CHATS TODO
     def has_connections_available(self):
@@ -39,12 +43,21 @@ class ConnectionsService:
         if user_id in self.users:
             del self.connections[user_id]
 
-    def get_user_connection(self, conn_id):
+    def get_user_connection(self, conn_id, chat_id):
+        found_user = self.chats_repository.get_chat_participant(conn_id, chat_id)
+        if not found_user:
+            return None
         if conn_id in self.users:
             return self.users[conn_id]
-        return None
+        return {
+            'user_id': found_user['user_id'],
+            'user_name': found_user['user_name']
+        }
     
     def get_chat_connection(self, conn_id):
+        # found_chat = self.chats_repository.get_chat_details(conn_id)
+        # if found_chat == None:
+        #     return None
         if conn_id in self.connections:
             return self.connections[conn_id]
         return None
@@ -66,7 +79,7 @@ class ConnectionsService:
     
     def get_available_chats(self):
         available_connections = []
-        
+
         for conn_id, conn_data in self.connections.items():
             if conn_data:
                 available_connections.append({
@@ -83,7 +96,7 @@ class ConnectionsService:
     def create_group_connection(self, decoded_data):
         user_id = decoded_data['user_id']
         chat_name = decoded_data['chat_name']
-        if user_id not in self.connections:
+        if user_id not in self.users:
             return {
                 'error': 'User not found',
                 'response_type': 'create_group_connection'
@@ -93,7 +106,7 @@ class ConnectionsService:
             self.connections[chat_id] = {
                 'chat_name': chat_name,
                 'subscribers': {
-                    user_id: self.connections[user_id]
+                    user_id: self.users[user_id]
                 }
             }
         return {
@@ -110,17 +123,22 @@ class ConnectionsService:
 
         if user_id not in self.users:
             return {
-                'error': 'User not found',
+                'error': 'user not found',
                 'response_type': 'join_group_connection'
             }
         
         if chat_id not in self.connections:
             return {
-                'error': 'User not found',
+                'error': 'chat not found',
                 'response_type': 'join_group_connection'
             }
-        self.chats_repository.add_chat_participant(chat_id, user_id)
-        self.connections[chat_id]['subscribers'].append(user_id)
+        
+        found_participation = self.chats_repository.get_chat_participant(user_id, chat_id)
+        
+        if not found_participation:
+            self.chats_repository.add_chat_participant(chat_id, user_id)
+        if user_id not in self.connections[chat_id]['subscribers']:
+            self.connections[chat_id]['subscribers'].append(user_id)
 
         return { 'sucess': True, 'request_type': 'join_group_connection'}
         

@@ -19,12 +19,12 @@ class ChatOptionHandler(BaseHandler):
             print('invalid choise') # this is not gonna  work, deal with this once the project is dosne maybe TODO:
         else:
             return response['connections'][choose-1]
-    
+
     def _print_connected_users_options(self,  response):
         os.system('cls')
         print('0. go back')
-        for index in range(len(response)):
-            print(f'{index +1 }. {response[index]['username']}')
+        for index in range(len(response['connections'])):
+            print(f'{index +1 }. {response['connections'][index]['username']}')
 
         choose = int(input('choose chat: '))
         if (choose == 0): 
@@ -33,20 +33,38 @@ class ChatOptionHandler(BaseHandler):
             print('invalid choise') # this is not gonna  work, deal with this once the project is dosne maybe TODO:
         else:
             return response['connections'][choose-1]
-       
-    def handle_chat_options(self, user_info):
+   
+    def handle_group_chats_options(self, user_info):
           while True:
+
             message = {
                 'user_id': user_info['user_id'],
                 'request_type': 'available_chats'
             }
+
             self.msg_service.send_message(self.conn, message)
             response = self.msg_service.receive_message(self.conn)
-
             if not response:
                 continue
             if 'success' in response and response['response_type'] == 'available_chats':
                 return self._print_chat_options(response)
             elif response and 'error' in response:
                 self.handle_error(response['error'], 'LISTING AVAILABLE CHATS')
+
+    def handle_available_users_chats(self, user_info):
+        while True:
+            
+            message = {
+                'user_id': user_info['user_id'],
+                'request_type': 'available_users'
+            }
+
+            self.msg_service.send_message(self.conn, message)
+            response = self.msg_service.receive_message(self.conn)
+            if not response:
+                continue
+            if 'success' in response and response['response_type'] == 'available_users':
+                return self._print_connected_users_options(response)
+            elif response and 'error' in response:
+                self.handle_error(response['error'], 'LISTING AVAILABLE AVAILABLE')
 

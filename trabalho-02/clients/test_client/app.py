@@ -1,6 +1,7 @@
+import sys
 import os
 import socket
-from services import MessagesService
+from services import MessagesService, FileStorageService
 from serializers import WebSocketSerializer, CryptoSerializer
 from handlers import AuthHandler, CreateChatHandler, ChatOptionHandler, JoinChatHandler
 
@@ -13,13 +14,15 @@ messages_service = MessagesService(
     websocket_serializer=WebSocketSerializer()
 )
 
+FileStorageService=FileStorageService()
+
 messages_service.send_handshake_message(conn)
 messages_service.receive_handshake_message(conn)
 
 auth_handler = AuthHandler(conn, messages_service)
 create_chat_handler=CreateChatHandler(
     conn=conn,
-    msg_service=messages_service
+    msg_service=messages_service,
 )
 chat_options_handler=ChatOptionHandler(
     conn=conn, 
@@ -28,6 +31,7 @@ chat_options_handler=ChatOptionHandler(
 join_chat_handler=JoinChatHandler(
     conn=conn,
     msg_service=messages_service,
+    file_storage_service=FileStorageService
 )
         
 
@@ -46,31 +50,28 @@ while True:
         response = auth_handler.handle_signup()
         os.system('cls')
     elif choice == '3':
-        break
+        messages_service.send_message(conn, { 'request_type': 'disconnect' })
+        sys.exit()
     else:
         print('Invalid choice')
 
 
 while True:
-    print('1. join group chat')
-    print('2. create group chat')
-    print('3. list group chats')
-    print('4. list connected users')
-    print('5. create private chat')
+    
+    print('1. create group chat')
+    print('2. list group chats')
+    print('3. list available users')
     print('6. Exit')
 
     choice = input('Enter choice: ')
-    if choice == '0':
-        break
+   
     if choice == '1':
-        pass
-    elif choice == '2':
         response = create_chat_handler.handle_chat_creation(current_user)
+    elif choice == '2':
+        current_chat_info = chat_options_handler.handle_group_chats_options(current_user)
+        join_chat_handler.handle_join_group_chat(current_chat_info, current_user)
     elif choice == '3':
-        current_chat_info=chat_options_handler.handle_chat_options(current_user)
-        join_chat_handler.handle_join_group_chat(current_chat_info, current_user)
-    elif choice == '4':
-        current_chat_info=chat_options_handler.handle_chat_options(current_user)
-        join_chat_handler.handle_join_group_chat(current_chat_info, current_user)
+        current_chat_info=chat_options_handler.handle_available_users_chats(current_user)
+        join_chat_handler.handle_join_private_chat(current_chat_info, current_user)
     
     os.system('cls')

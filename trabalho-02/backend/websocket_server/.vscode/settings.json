@@ -3,5 +3,14 @@
     "cSpell.words": [
         "pkcs",
         "unpad"
+    ],
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "chatuba_db",
+            "database": "${workspaceFolder:websocket_server}/database/chatuba_db.sqlite3"
+        }
     ] // Para Windows
 }

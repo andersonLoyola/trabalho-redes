@@ -35,4 +35,13 @@ class AuthService:
         self.users_repository.create_user(username, password)
         return {'success': True, 'response_type': 'signup'}
 
-    
+   
+        found_user = self.users_repository.get_user(user_id)
+
+        if not found_user:
+            return { 'error': 'user not found' }
+
+        return {
+            'user_id': found_user['id'],
+            'user_name': found_user['username']
+        }

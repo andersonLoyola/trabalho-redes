@@ -1,5 +1,4 @@
 import base64
-import os
 
 class FileStorageService(): 
 
@@ -7,11 +6,17 @@ class FileStorageService():
         self.host = host
         self.port = port
 
-    def save_file(self, file, file_path):
-        file_path = f'uploads/{file_path}'
-        decoded_file = base64.b64decode(file)
+    def _generate_attachment_link(self, file_path):
+        return f'http://{self.host}:{self.port}/{file_path}'
+
+    def save_file(self, attachment_data):
+        file_name = attachment_data['file_name']
+        file_data = attachment_data['file_data']
+
+        file_path = f'uploads/{file_name}'
+        decoded_file = base64.b64decode(file_data)
         with open(file_path, 'wb') as f:
             f.write(decoded_file)
 
-    def generate_attachment_link(self, file_name):
-        return f'http://{self.host}:{self.port}/uploads/{file_name}'
+        return self._generate_attachment_link(file_path)
+        
