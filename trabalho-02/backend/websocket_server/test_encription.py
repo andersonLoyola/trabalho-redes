@@ -5,7 +5,7 @@ import base64
 import json
 
 message = {
-    'request_type': 'message',
+    'action': 'message',
     'sender_id': 'some sender',
     'receiver_id': 'some receiver',
     'receiver': 'fkme'

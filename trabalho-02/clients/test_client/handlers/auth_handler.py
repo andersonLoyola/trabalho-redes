@@ -1,56 +1,43 @@
 import os
-
+import json
 class AuthHandler:
 
-    def __init__(self, conn, msg_service):
-        self.conn = conn
-        self.msg_service = msg_service
+    def __init__(self, api_service):
+        self.api_service = api_service
     
     def _login_request(self):
         os.system('cls')
         username = str(input('Enter username: '))
         password = str(input('Enter password: '))
-        message = {
-            "request_type": "auth", 
-            "username": username, 
-            "password": password
-        }
-        self.msg_service.send_message(self.conn, message)
-
+        response = self.api_service.auth(username, password)
+        return response
+        
     def _sign_up_request(self):
         os.system('cls')
         username = input('Enter username: ')
         password = input('Enter password: ')
-        message = {
-            "request_type": "signup", 
-            "username": username, 
-            "password": password
-        }
-        self.msg_service.send_message(self.conn, message)
+        response = self.api_service.signup(username, password)
+        return response
         
-
+    """
+        TODO:
+        Currently there is no way to break free form this, i think we
+        should implement a option to left this whenever want
+    """ 
     def handle_login(self):
-        self._login_request()
         while True:
-            response = self.msg_service.receive_message(self.conn)
-            if not response:
-                continue
-            if 'success' in response and response['response_type'] == 'auth':
+            response = self._login_request()
+            if 'error' not in response:
                 os.system('cls')
-                return response
-            elif response and 'error' in response:
-                input(response['error'])
-                self._login_request()
+                return response['token']
+            else:
+                print(f'{response['error']}')
 
     def handle_signup(self):
-        self._sign_up_request()
         while True:
-            response = self.msg_service.receive_message(self.conn)
-            if not response:
-                continue
-            if 'success' in response and response['response_type'] == 'signup':
+            response = self._sign_up_request()
+            if 'error' not in response:
                 os.system('cls')
                 return response
-            elif response and 'error' in response:
-                input(response['error'])
-                self._sign_up_request()
+            else:
+                print(f'{response['error']}')

@@ -1,41 +1,51 @@
 import uuid
-class UsersRepository():
-    def __init__(self, conn):
-        self.user_table_table = 'users'
-        self.conn = conn
 
- 
-    def get_user(self, username):
-        cursor = self.conn.cursor()
-        query = """
-            SELECT * FROM users u
-            WHERE u.username = :username
-        """
-        result = cursor.execute(query, (username,))
-        return result.fetchone()
+class UsersRepository:
+    def __init__(self, connection_pool):
+        self.connection_pool = connection_pool
 
+    def create_user(self, user_data):
+        username = user_data['username']
+        password = user_data['password']
+        try:
+            conn = self.connection_pool.get_connection()
+            cursor = conn.cursor()
+            user_id = str(uuid.uuid4())
+            query = """
+                INSERT INTO users (
+                    id,
+                    username,
+                    password 
+                )
+                VALUES (
+                    ?,
+                    ?,
+                    ?
+                )
+            """
+            cursor.execute(query, (user_id, username, password))
+            conn.commit()
+        except Exception as e:
+            print(f'create_user: {e}')
+            raise e
+        finally:
+            self.connection_pool.release_connection(conn)
     
-    def get_users_by_ids(self, user_ids):
-        masked_ids = [ '?' for (_) in user_ids]
-        cursor = self.conn.cursor()
-        query = f"""
-            SELECT 
-                id,
-                username
-            FROM users u
-            WHERE 
-                id IN  ({masked_ids.keys().join(',')})
-        """
-        results = cursor.execute(query, list(user_ids))
-        return results.fetchmany()
-
-    def create_user(self, user):
-        id = uuid.uuid4()
-        cursor = self.conn.cursor()
-        query = f""" 
-            INSERT INTO users
-            VALUES (?, ?, ?)
-        """
-        cursor.execute(query,(str(id), user['username'], user['password']))
-        self.conn.commit()
-        
+    def get_user(self, username):
+        try:
+            conn = self.connection_pool.get_connection()
+            cursor = conn.cursor()
+            query  = f"""
+                SELECT * 
+                FROM users
+                WHERE username = ?
+            """
+            cursor = conn.cursor()
+            cursor.execute(query, (username,))
+            user = cursor.fetchone()
+            return user
+        except Exception as e:
+            print(f'get_user: {e}')
+            raise e
+        finally:
+            self.connection_pool.release_connection(conn)

@@ -1,2 +1,4 @@
+from .token_service import TokenService
 from .messages_service import MessagesService
+from .chatuba_api_service import ChatubaApiService
 from .file_storage_service import FileStorageService

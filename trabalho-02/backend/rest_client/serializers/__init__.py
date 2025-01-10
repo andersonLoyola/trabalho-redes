@@ -1,3 +1,2 @@
-from .chat_serializer import ChatSerializer
-from .messages_serializer import MessagesSerializer
+from .crypto_serializer import CryptoSerializer
 from .sqlite_serializer import SqliteSerializer

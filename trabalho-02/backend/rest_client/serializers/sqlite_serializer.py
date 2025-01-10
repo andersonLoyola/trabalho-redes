@@ -1,4 +1,5 @@
-class SqliteSerializer():
+class SqliteSerializer:
+    
     @staticmethod
     def to_dict(cursor, row):
         fields = [col[0] for col in cursor.description]

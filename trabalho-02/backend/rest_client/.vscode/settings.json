@@ -3,5 +3,13 @@
     "cSpell.words": [
         "pkcs",
         "unpad"
+    ],
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "./infra/database/db.sqlite3",
+            "name": "chatuba_db"
+        }
     ] // Para Windows
 }

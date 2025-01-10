@@ -13,7 +13,7 @@ class MessagesService():
             yield msg_bytes[i:i + chunk_size] # returns msg bytes from iindex till i index + chunk_size
    
     # TODo: GENERATE A SAFE SEC WEBSOCKET KEY LATER
-    def send_handshake_message(self, receiver_socket):
+    def send_handshake_message(self, client_socket):
             handshake_message = (
                 "HTTP/1.1 101 Switching Protocols\r\n"
                 "Upgrade: websocket\r\n"
@@ -21,10 +21,10 @@ class MessagesService():
                 "Sec-WebSocket-Accept:  dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n"
                 "Sec-WebSocket-Key: TZ/zHeAVk15vOSYhxVs8rA==\r\n"
             )
-            receiver_socket.send(handshake_message.encode('utf-8'))
+            client_socket.send(handshake_message.encode('utf-8'))
 
-    def receive_handshake_message(self,receiver_socket):
-        response = receiver_socket.recv(1024).decode('utf-8')
+    def receive_handshake_message(self, client_socket):
+        response = client_socket.recv(1024).decode('utf-8')
         if "HTTP/1.1 101 Switching Protocols" in response and \
         "Upgrade: websocket" in response and \
         "Connection: Upgrade" in response:
@@ -34,7 +34,7 @@ class MessagesService():
             print("Handshake failed!")
             return False
         
-    def receive_message(self, receiver_socket):
+    def receive_message(self, client_socket):
         buffer_size = 1024 * 256# TODO: maybe put this in a config file
         """
             IMPORTANT: this initially has the socket frame parts combined  
@@ -42,7 +42,7 @@ class MessagesService():
         """
         message_parts = bytearray() 
         while True:
-            part = receiver_socket.recv(buffer_size)
+            part = client_socket.recv(buffer_size)
             message_parts.extend(part)
             if len(part) < buffer_size:
                 break
@@ -50,12 +50,12 @@ class MessagesService():
         decrypted_message = self.crypto_serializer.decrypt(encrypted_message)
         return json.loads(decrypted_message)
 
-    def send_message(self, receiver_socket, message):
+    def send_message(self, client_socket, message):
         message_bytes = json.dumps(message).encode('utf-8')
         cyphered_message_bytes = self.crypto_serializer.encrypt(message_bytes)
         message_chunks = list(self._chunk_message(cyphered_message_bytes))
         for i, message_chunk in (enumerate(message_chunks)):
             fin = (i == len(message_chunks) -1)
             encoded_frame = self.websocket_serializer.encode_socket_frame(message_chunk, fin)
-            receiver_socket.send(encoded_frame)
+            client_socket.send(encoded_frame)
       

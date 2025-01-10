@@ -1,3 +1,3 @@
-# from .messages_repository import MessagesRepository
 from .chats_repository import ChatsRepository
+from .messages_repository import MessagesRepository
 from .users_repository import UsersRepository

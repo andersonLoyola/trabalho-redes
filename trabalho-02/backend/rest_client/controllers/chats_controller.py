@@ -1,102 +1,112 @@
-from jwt  import InvalidTokenError, ExpiredSignatureError
 import traceback
 
-class ChatsController():
+class ChatsController:
 
     def  __init__(
             self, 
-            jwtService, 
-            chatsRepository, 
-            messagesRepository, 
-            usersRepository,
-            chatsSerializer,
-            messagesSerializer
+            users_repository,
+            chats_repository, 
+            messages_repository,
+            crypto_serializer,
+            token_service,
+            file_storage_service,
+
         ):
-        self.jwtService = jwtService
-        self.chatsRepository = chatsRepository
-        self.usersRepository = usersRepository
-        self.messagesRepository = messagesRepository
-        self.chatsSerializer = chatsSerializer
+        self.token_service = token_service
+        self.chats_repository = chats_repository
+        self.users_repository = users_repository
+        self.crypto_serializer = crypto_serializer
+        self.messages_repository = messages_repository
+        self.file_storage_service = file_storage_service
 
     def create_chat(self, request):
         try:
-            token = request['headers'].get('Authorization').split(' ')[1]
             request_data = request['body']
-            decoded_token = self.jwtService.decode_token(token)
-            created_chat_id = self.chatsRepository.create_chat(
+            token = request['headers'].get('Authorization').split(' ')[-1]
+            decoded_token = self.token_service.decode_token(token)
+            if (not decoded_token or 'id' not in decoded_token ):
+                return 401, {'message': 'unauthorized'}
+            found_chat = self.chats_repository.get_chat_by_name(request_data['chat_name'])
+            if (found_chat):
+                return 409, {'message': 'chat with the same name found'}
+            created_chat_id = self.chats_repository.create_chat(
                 chat_name = request_data['chat_name'],
-                user_id = decoded_token['user_id'],
-                chat_type = request_data['chat_type'],
+                user_id = decoded_token['id'],
             )
-        
             return 200, { "message": "success", 'created_chat_id': created_chat_id }
-        except ExpiredSignatureError as e:
+    
+        except Exception as e:
             print(e)
             traceback.print_exc()  
-            return 401, {"message": "token has expired"} 
-        except InvalidTokenError as e:
+            return 500, {"message": "internal server error"}
+    
+    def get_available_chats(self, request):
+        try:
+            token = request['headers'].get('Authorization').split(' ')[1]
+            decoded_token = self.token_service.decode_token(token)
+            if (not decoded_token or 'id' not in decoded_token ):
+                return 401, {'message': 'unauthorized'}
+            chats = self.chats_repository.get_chats_info()
+            return 200, { "message": "success", "chats": chats}
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            return 500, { "message": "internal server error"}
+        
+    def get_chat_details(self, request, chat_id):
+        try:
+            token = request['headers'].get('Authorization').split(' ')[1]
+            decoded_token = self.token_service.decode_token(token)
+            if (not decoded_token or 'id' not in decoded_token ):
+                return 401, {'message': 'unauthorized'}
+            chat = self.chats_repository.get_chat_details(chat_id)
+            return 200, { 
+                "message": "success",
+                "chat": chat,
+            }
+        except Exception as e:
             print(e)
             traceback.print_exc()  
-            return 401, {"message": "invalid token"}
+            return 500, {"message": "internal server error"}
+   
+    def add_chat_participant(self, request, chat_id):
+        try:
+            token = request['headers'].get('Authorization').split(' ')[1]
+            decoded_token = self.token_service.decode_token(token)
+            if (not decoded_token or 'id' not in decoded_token ):
+                return 401, {'message': 'unauthorized'}
+            chat = self.chats_repository.add_chat_participant(chat_id, decoded_token['id'])
+            return 200, { 
+                "message": "success",
+            }
         except Exception as e:
             print(e)
             traceback.print_exc()  
             return 500, {"message": "internal server error"}
 
-    # def add_chat_users(self, request, chat_id):
-    #     try: 
-    #         token = request.headers.get('Authorization').split(' ')[1]
-    #         decoded_token = self.jwtService.decode_token(token)
-    #         request_data = request.get_json()
-    #         # A user can only add users to a chat if he is already member of the chat
-    #         chat = self.chatsRepository.get_chat_details(chat_id)
-    #         if decoded_token['user_id'] not in chat['users']:
-    #             return { "message": "unauthorized"}), 401
-    #         #TODO: ADDS THIS LATER We can only add users that are already registered
-    #         self.chatsRepository.add_users(chat_id, request_data['users'])
-    #         return { "message": "success"}), 200
-    #     except ExpiredSignatureError as e:
-    #         print(e)
-    #         traceback.print_exc()  
-    #         return jsonify({"message": "token has expired"}), 401
-    #     except InvalidTokenError as e:
-    #         print(e)
-    #         traceback.print_exc()  
-    #         return jsonify({"message": "invalid token"}), 401
-    #     except Exception as e:
-    #         print(e)
-    #         traceback.print_exc()  
-    #         return jsonify({"message": "internal server error"}), 500
-
-    def get_user_chats(self, request):
-        bearer_token = request['headers'].get('Authorization').split(' ')[-1]
+    def store_group_chat_messages(self, request, chat_id):
         try:
-            decoded_token = self.jwtService.decode_token(bearer_token)
-        except Exception as e:
-            return 401, { "message": "invalid token"}
-        chats = self.chatsRepository.get_user_chats(decoded_token['user_id'])
-        # mapped_chats = self.chatsSerializer.map_chats_info(chats)
-        return 200, { "message": "success", "chats": chats}
-        
-    def get_chat_details(self, request):
-        try:
-            token = request.headers['Authorization'].split(' ')[1]
-        
-            self.jwtService.decode_token(token)
-            chat = self.chatsRepository.get_chat_details('chat_id')
+            token = request['headers'].get('Authorization').split(' ')[1]
+            request_body = request['body']
+            decoded_token = self.token_service.decode_token(token)
+            
+            if (not decoded_token or 'id' not in decoded_token ):
+                return 401, {'message': 'unauthorized'}
+            found_chat = self.chats_repository.get_chat_by_id(chat_id)
+            if found_chat == None:
+                return 404, {'message': 'chat not found'}
+            if 'attachment' in request_body and request_body['attachment'] != '':
+                request_body['attachment']['file_path'] = self.file_storage_service.save_file(request_body['sender_id'], request_body['attachment'])
+            self.messages_repository.create_group_message(
+                request_body['sender_id'],
+                chat_id,
+                request_body['receivers'],
+                request_body['message'],
+                request_body['attachment']
+            )
             return 200, { 
                 "message": "success",
-                "chat": chat,
             }
-
-        except ExpiredSignatureError as e:
-            print(e)
-            traceback.print_exc()  
-            return 401, {"message": "token has expired"}
-        except InvalidTokenError as e:
-            print(e)
-            traceback.print_exc()  
-            return 401,{"message": "invalid token"}
         except Exception as e:
             print(e)
             traceback.print_exc()  
