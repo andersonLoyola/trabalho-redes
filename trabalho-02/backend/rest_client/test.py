@@ -5,8 +5,8 @@ response  = requests.api.post('http://localhost:8080/api/v1/users/login',
         'Content-Type': 'application/json'
     },
     json={
-    'username': 'chatuba',
-    'password': 'a$$word'
+    'username': 'user',
+    'password': 'user'
 })
 
 print(response)

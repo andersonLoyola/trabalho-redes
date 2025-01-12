@@ -17,6 +17,7 @@ class ConnectionsHandler:
         connection_message = {
             'user_id': user_data_info['id'],
             'user_name': user_data_info['username'],
+            'session_id': user_data_info['session_id'],
             'action': 'connection'
         }
         self.message_service.send_message(self.conn, connection_message)
@@ -29,8 +30,7 @@ class ConnectionsHandler:
             response = self._send_user_connection_message(user_data_info)
             if 'success' in response:
                 return response
-
-            if 'error' in response:
+            elif 'error' in response:
                 if retry_attempt < 3:
                     input(f'error: {response['error']}')
                     retry_attempt += 1

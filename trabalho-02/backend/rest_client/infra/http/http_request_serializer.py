@@ -23,11 +23,11 @@ class HTTPRequestSerializer():
     """       
     def _parse_body(self, request):
         content_length = request.headers.get("content-length")
-        if (content_length):
-            length = int(content_length)
-            rfile_str = request.rfile.read(length).decode("utf8") #AKA BODY STRING
-            return json.loads(rfile_str)
-        return {}
+        if not content_length or int(content_length) == 0:
+            return {}
+        length = int(content_length)
+        rfile_str = request.rfile.read(length).decode("utf8") #AKA BODY STRING
+        return json.loads(rfile_str)
    
     # TODO: see better eay to do it later
     # @IMPORTANT: api urls must follow /api/v1/<resource>/<identifier />

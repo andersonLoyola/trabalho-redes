@@ -10,7 +10,7 @@ class ConnectionPool:
         self.pool = Queue(maxsize=pool_size)
         self._lock = threading.Lock()
         for _ in range(pool_size):
-            conn = sqlite3.connect(db_path, check_same_thread=False)
+            conn = sqlite3.connect(db_path, check_same_thread=False, timeout=15.0) # Waits at most 15 seconds for transaction end
             conn.row_factory = SqliteSerializer.to_dict
             conn.execute('PRAGMA journal_mode=WAL')
             conn.execute('pragma busy_timeout=500;')

@@ -29,7 +29,6 @@ class MessagesRepository():
             ) VALUES (?, ?, ?, ?, ?)
         """
         attachment_id = ''
-        cursor.execute('BEGIN;')
         try:
             if attachment != '':
                 attachment_id = str(uuid.uuid4())
@@ -50,7 +49,6 @@ class MessagesRepository():
                     datetime.datetime.now()
                 )
             )
-            cursor.execute('COMMIT;')
             conn.commit()
         except Exception as e:
             print(f'create_private_message: {e}')
@@ -82,7 +80,6 @@ class MessagesRepository():
             ) VALUES (?, ?, ?, ?, ?)
         """
         attachment_id = ''
-        cursor.execute('BEGIN;')
         try:
             if attachment != '':
                 attachment_id = str(uuid.uuid4())
@@ -105,7 +102,6 @@ class MessagesRepository():
                         datetime.datetime.now()
                     )
                 )
-            cursor.execute('COMMIT;')
             conn.commit()
         except Exception as e:
             print(f'create_group_message: {e}')

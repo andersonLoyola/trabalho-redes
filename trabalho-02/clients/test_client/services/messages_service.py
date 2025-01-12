@@ -35,7 +35,7 @@ class MessagesService():
             return False
         
     def receive_message(self, client_socket):
-        buffer_size = 1024 * 256# TODO: maybe put this in a config file
+        buffer_size = 1024 * 256 # TODO: maybe put this in a config file
         """
             IMPORTANT: this initially has the socket frame parts combined  
             SEE: https://datatracker.ietf.org/doc/html/rfc6455#section-3

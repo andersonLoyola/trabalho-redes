@@ -1,5 +1,4 @@
 import json
-import requests
 import traceback
 
 class MessagesService(): 
@@ -22,38 +21,7 @@ class MessagesService():
         for i in range(0, len(msg_bytes), chunk_size):
             yield msg_bytes[i:i + chunk_size] # returns msg bytes from iindex till i index + chunk_size
 
-    def store_private_messages(self, sender_id, receiver_id, content, attachment):
-        try:
-            requests.api.post('', 
-                headers= {
-                    'Content-Type': 'application/json',
-                },
-                json={
-                    'sender_id': sender_id,
-                    'receiver_id': receiver_id,
-                    'content': content,
-                    'attachment': attachment
-                }
-            )
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-    
-    def store_group_messages(self, sender_id, chat_id, receivers, content, attachment):
-        try:
-            action = {
-                'content': content,
-                'chat_id': chat_id,
-                'action': 'group_message',
-                'sender_id': sender_id,
-                'receivers': receivers,
-                'attachment': attachment
-            }
-            self.actions_queue.add_action(action)
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-    
+  
     def receive_handshake_message(self, receiver_socket):
         try:
             self.websocket_serializer.handshake(receiver_socket)

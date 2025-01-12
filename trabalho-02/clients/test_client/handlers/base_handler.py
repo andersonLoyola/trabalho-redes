@@ -2,9 +2,9 @@ import sys
 
 class BaseHandler:
 
-    def handle_error(self, error, flow_name):
+    def handle_error(self, error):
         print(f"""
-            ERROR: {error} WHEN {flow_name}
+            ERROR: {error}
             do you wish to continue?
                 (y) yes
                 (n) no

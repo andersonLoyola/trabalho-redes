@@ -1,5 +1,5 @@
 import os
-import json
+import getpass
 class AuthHandler:
 
     def __init__(self, api_service):
@@ -8,14 +8,14 @@ class AuthHandler:
     def _login_request(self):
         os.system('cls')
         username = str(input('Enter username: '))
-        password = str(input('Enter password: '))
-        response = self.api_service.auth(username, password)
+        password = getpass.getpass("Enter your password: ")
+        response = self.api_service.signin(username, password)
         return response
         
     def _sign_up_request(self):
         os.system('cls')
         username = input('Enter username: ')
-        password = input('Enter password: ')
+        password = getpass.getpass('Enter your password: ')
         response = self.api_service.signup(username, password)
         return response
         
@@ -40,4 +40,4 @@ class AuthHandler:
                 os.system('cls')
                 return response
             else:
-                print(f'{response['error']}')
+                input(f'{response['error']}')

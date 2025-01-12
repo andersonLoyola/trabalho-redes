@@ -8,9 +8,10 @@ class ConnectionsService:
     
     def __init__(self, rest_service):
         self.MAX_CONNECTIONS = 50
-        self.rest_service = rest_service
         self.lock = threading.Lock()
+        self.rest_service = rest_service
 
+    # TODO: remove this shit later
     @classmethod
     def get_instance(cls, rest_service):
         if not cls.instance:
@@ -27,12 +28,19 @@ class ConnectionsService:
             return { 'action': 'connection', 'success': True }
         return { 'action': 'connection', 'error': 'Server is full' }
     
-    def connect_user(self, decoded_data):
+    def connect_user(self, decoded_data, client_socket):
         user_id = decoded_data['user_id']
+        session_id = decoded_data['session_id']
 
         if user_id not in self.users:
             self.users[user_id] = {
-                'sessions': {}
+                'user_name': decoded_data['user_name'],
+                'sessions': {
+                    session_id: {
+                        'status': 'active',
+                        'conn': client_socket
+                    }
+                }
             }
             return {'action': 'connection', 'success': True}
 
@@ -42,123 +50,65 @@ class ConnectionsService:
                 'error': 'max user simultaneous connection reached'
             }
         
+        self.users[user_id]['sessions'][session_id] = {
+            'status': 'active',
+            'conn': client_socket
+        }
+        
         return {'action': 'connection', 'success': True}
-            
-    def add_user_chat_session(self, user_id, chat_id, client_socket):
-        try:
-            with self.lock:
-                if user_id not in self.users:
-                    return {
-                        'action': 'join_chat',
-                        'error': 'user not found'
-                    }
-                if (len(self.users[user_id]['sessions'].keys()) > 3):
-                    return {
-                        'action': 'join_chat', 
-                        'error': 'max user simultaneous connection reached'
-                    }
-                if (chat_id in self.users[user_id]['sessions']):
-                    return {
-                        'action': 'join_chat', 
-                        'error': 'already connected to this chat'
-                    }
-                if (chat_id in self.group_chats):
-                    self.group_chats[chat_id]['subscribers'].append(user_id)
-                self.users[user_id]['sessions'][chat_id] = client_socket
-                
-                return {
-                    'success': True
-                }
-        
-        except Exception as e:
-            print(e)
-            traceback.print_exc()
 
-    def load_group_chats(self):
-        try:
-            with self.lock:
-                response = self.rest_service.get_group_chats()
-                for chat in response['chats']: 
-                    chat_id = chat['chat_id']
-                    chat_conn = {
-                        'chat_name': chat['chat_name'],
-                        'subscribers': chat['subscribers'].split(',')
-                    }
-                    self.group_chats[chat_id] = chat_conn          
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-
-    def remove_user_chat_session(self, user_id, chat_id):
-        if user_id in self.users and chat_id in self.users[user_id]['sessions'][chat_id]:
-            del self.users[user_id]['sessions'][chat_id]
-        
-    def get_user_connection(self, user_id, chat_id):
+    def get_user_session(self, user_id, session_id, chat_id):
         try: 
             if user_id not in self.users:
                 return {
-                    # 'action': 'join_chat',
                     'error': f'user {user_id} not found'
                 }
-            
-            if chat_id not in self.users[user_id]['sessions']:
+            elif session_id not in self.users[user_id]['sessions']:
                 return {
-                    'error': f'user {user_id} not member of {chat_id} at this momeent'
+                    'error': f'user {user_id} not found'
                 }
-            
+            user_session = self.users[user_id]['sessions'][session_id]
+            if user_session['status'] != 'active' and user_session['chat_id'] != chat_id:
+                return {
+                    'error': f'session {session_id} from user: {user_id} is not available'
+                }
             return {
                 'success': True,
                 'user_id': user_id,
-                'conn': self.users[user_id]['sessions'][chat_id]
+                'conn': self.users[user_id]['sessions'][session_id]['conn']
             }
+        except Exception as e:
+            traceback.print_exc()
+            print(e)
 
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-    
-    def get_chat_connection(self, conn_id):
-        try:
-            if conn_id in self.group_chats:
-                return self.group_chats[conn_id]
-            return None
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-     
-    def get_available_users(self):
-        available_users = []
+    def update_session_status(self, user_id, session_id, status, chat_id):
+        if user_id not in self.users:
+            return {
+                'error': 'user_not found'
+            }
+        elif session_id not in self.users[user_id]['sessions']:
+            return {
+                'error': 'session not found'
+            }
+        self.users[user_id]['sessions'][session_id]['status'] = status
+        self.users[user_id]['sessions'][session_id]['chat_id'] = chat_id
+
+    def show_private_chats(self):
+        show_private_chats = []
         for conn_id, conn_data in self.users.items():
-            available_users.append({
-                'user_id': conn_id,
-                'username': conn_data['username']
-            })
-
+            for session_id, session_data in conn_data['sessions'].items():
+                if session_data['status'] == 'active':
+                    show_private_chats.append({
+                        'user_id': conn_id,
+                        'user_name': conn_data['user_name'],
+                        'session_id': session_id
+                    })
         return {
                 'success': True,
-                'action': 'available_users', 
-                'connections': available_users
+                'action': 'show_private_chats', 
+                'chats': show_private_chats
             }
     
-    def get_available_chats(self):
-        try:
-            with self.lock:
-                available_connections = []
-                for conn_id, conn_data in self.group_chats.items():
-                    if conn_data:
-                        available_connections.append({
-                            'chat_id': conn_id,
-                            'chat_name': conn_data['chat_name']
-                        })
-
-                return {
-                        'success': True,
-                        'action': 'available_chats', 
-                        'connections': available_connections
-                    }
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-
     def remove_user_active_session(self, user_id, client_socket):
         if user_id not in self.users:
             return
@@ -168,26 +118,4 @@ class ConnectionsService:
                 del user_sessions[session_id]
                 return
         
-    def left_group_connection(self, decoded_data):
-        try:
-            with self.lock:
-                user_id = decoded_data['user_id']
-                chat_id = decoded_data['chat_id']
-
-                if user_id not in self.users:
-                    return {
-                        'error': 'User not found',
-                        'action': 'left_group_connection'
-                    }
-                if chat_id not in self.group_chats:
-                    return {
-                        'error': 'Chat not found',
-                        'action': 'left_group_connection'
-                    }
-                self.group_chats[chat_id].remove(user_id)
-                return { 'sucess': True, 'action': 'left_group_connection' }
-        except ValueError:
-            return { 'error': 'user not subscribed to this chat', 'action': 'left_group_connection' }
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
+   

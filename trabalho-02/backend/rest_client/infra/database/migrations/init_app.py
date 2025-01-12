@@ -18,6 +18,17 @@ def execute():
         );
     """
 
+    create_user_sessions_table = """
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            user_id VARCHAR(36) NOT NULL,
+            session_id VARCHAR(36) NOT NULL,
+            status VARCHAR(36) NOT NULL DEFAULT 'ACTIVE',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """
+
     create_chats_table = """
         CREATE TABLE IF NOT EXISTS chats (
             id VARCHAR(36) PRIMARY KEY NOT NULL UNIQUE,
@@ -32,8 +43,8 @@ def execute():
             content TEXT,
             attachment_id VARCHAR(36) DEFAULT '',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(sender_id) REFERENCES users(id),
-            FOREIGN KEY(receiver_id) REFERENCES users(id),
+            FOREIGN KEY(sender_id) REFERENCES user_sessions(session_id),
+            FOREIGN KEY(receiver_id) REFERENCES user_sessions(session_id),
             FOREIGN KEY(attachment_id) REFERENCES attachments(id)
         );
     """
@@ -46,7 +57,10 @@ def execute():
             content TEXT,
             attachment_id VARCHAR(36) DEFAULT '',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(attachment_id) REFERENCES attachments(id)
+            FOREIGN KEY(chat_id) REFERENCES chats(id)
+            FOREIGN KEY(attachment_id) REFERENCES attachments(id),
+            FOREIGN KEY(sender_id) REFERENCES user_sessions(session_id)
+            FOREIGN KEY(receiver_id) REFERENCES user_sessions(session_id)
         );
     """
 
@@ -62,11 +76,11 @@ def execute():
 
     user_chats_query = """
         CREATE TABLE IF NOT EXISTS chat_users (
-            user_id VARCHAR(36) NOT NULL,
+            user_session_id VARCHAR(36) NOT NULL,
             chat_id VARCHAR(36) NOT NULL,
             FOREIGN KEY(chat_id) REFERENCES chats(id),
-            FOREIGN KEY(user_id) REFERENCES users(id)
-            UNIQUE(user_id, chat_id)
+            FOREIGN KEY(user_session_id) REFERENCES user_sessions(session_id)
+            UNIQUE(user_session_id, chat_id)
         )
     """
 
@@ -84,6 +98,7 @@ def execute():
         cursor.execute(create_attachments_table)
         cursor.execute(create_private_messages_table)
         cursor.execute(create_group_messages_table)
+        cursor.execute(create_user_sessions_table)
         cursor.execute(user_chats_query)
         cursor.execute("COMMIT")
     except Exception as e:

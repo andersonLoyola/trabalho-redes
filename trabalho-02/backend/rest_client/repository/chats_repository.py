@@ -1,14 +1,11 @@
-import uuid
-
 class ChatsRepository(): 
 
     def __init__(self, connection_pool):
         self.connection_pool = connection_pool
         
-    def create_chat(self, user_id, chat_name):
+    def create_chat(self, chat_id, session_id, chat_name):
         conn = self.connection_pool.get_connection()
         cursor = conn.cursor()
-        chat_id = str(uuid.uuid4())
         create_chat_query = """
             INSERT INTO chats(
                 id,
@@ -18,15 +15,14 @@ class ChatsRepository():
         """ 
         create_chat_users_query = """
             INSERT INTO chat_users (
-                user_id,
-                chat_id
+                chat_id,
+                user_session_id
             ) VALUES (?,?)
         """
         try:
-            cursor.execute("BEGIN;")
             cursor.execute(create_chat_query, (chat_id, chat_name))
-            cursor.execute(create_chat_users_query, (user_id, chat_id))
-            cursor.execute("COMMIT;")
+            cursor.execute(create_chat_users_query, (chat_id, session_id))
+            conn.commit()
             return str(chat_id) 
         except Exception as e:
             cursor.execute("ROLLBACK;")
@@ -39,15 +35,27 @@ class ChatsRepository():
         conn = self.connection_pool.get_connection()
         cursor = conn.cursor()
         get_user_chats_query = """
+            WITH chat_subscribers AS (
+                SELECT
+                    cu.chat_id,
+                    json_group_array(
+                        json_object(
+                            'session_id', us.session_id,
+                            'user_id', us.user_id
+                        )
+                    ) as subscribers
+                FROM chat_users cu
+                INNER JOIN user_sessions us
+                    ON us.session_id = cu.user_session_id
+                GROUP BY cu.chat_id
+            )
             SELECT 
                 c.id as chat_id,
                 c.name as chat_name,
-                (
-                    SELECT GROUP_CONCAT(cu.user_id)
-                    FROM chat_users cu
-                    WHERE cu.chat_id = c.id  
-                ) as subscribers
+                cs.subscribers
             FROM chats c
+            LEFT JOIN chat_subscribers cs
+                ON c.id = cs.chat_id
         """
         try:
             result = cursor.execute(get_user_chats_query)
@@ -58,25 +66,21 @@ class ChatsRepository():
         finally:
             self.connection_pool.release_connection(conn)
         
-
-    def get_chat_participant(self, user_id, chat_id):
+    def get_chat_participant(self, chat_id, session_id):
         conn = self.connection_pool.get_connection()
         cursor = conn.cursor()
         get_chat_participant = """
             SELECT 
-                u.id as user_id,
-                u.username as user_name,
-                cu.chat_id as chat_id
+                cu.user_session_id,
+                cu.chat_id
             FROM    
                 chat_users cu
-            INNER JOIN users u
-            ON cu.user_id = cu.user_id
             WHERE 
-                cu.user_id = ?
+                cu.user_session_id = ?
                 AND cu.chat_id = ?
         """ 
         try:
-            found_chat_connection = cursor.execute(get_chat_participant, (user_id, chat_id))
+            found_chat_connection = cursor.execute(get_chat_participant, (session_id, chat_id))
             return found_chat_connection.fetchone()
         except Exception as e:
             print(f'get_chat_participant: {e}')
@@ -91,11 +95,14 @@ class ChatsRepository():
             SELECT   
                 u.id as user_id,
                 u.username as user_name,
+                us.session_id as session_id
                 cu.chat_id as chat_id
             FROM 
                 chat_users cu
+            INNER JOIN user_sessions us
+                ON us.session_id = cu.user_session_id
             INNER JOIN users u
-            ON cu.user_id = cu.user_id
+                ON cu.user_id = us.user_id
             WHERE 
                 cu.chat_id = ?
         """
@@ -109,7 +116,6 @@ class ChatsRepository():
         finally:
             self.connection_pool.release_connection(conn)
     
- 
     def get_chat_by_name(self, chat_name):
         conn = self.connection_pool.get_connection()
         cursor = conn.cursor()
@@ -132,7 +138,6 @@ class ChatsRepository():
         finally:
             self.connection_pool.release_connection(conn)
     
-  
     def get_chat_by_id(self, chat_id):
         conn = self.connection_pool.get_connection()
         cursor = conn.cursor()
@@ -155,38 +160,40 @@ class ChatsRepository():
         finally:
             self.connection_pool.release_connection(conn)
     
-    def add_chat_participant(self, chat_id, user_id):
-        conn = self.connection_pool.get_connection()
-        cursor = conn.cursor()
-        add_user_to_chat_info = """
+    def add_chat_participant(self, chat_id, user_session_id):
+        add_user_to_chat_query = """
             INSERT INTO chat_users (
                 chat_id,
-                user_id
+                user_session_id
             ) VALUES (?, ?)
         """
         try:
-            cursor.execute('BEGIN;')
-            cursor.execute(add_user_to_chat_info, (chat_id, user_id))
-            cursor.execute('COMMIT;')
+            conn = self.connection_pool.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(add_user_to_chat_query, (chat_id, user_session_id))
+            conn.commit()
         except Exception as e:
             print(f'add_chat_participant: {e}')
             raise e
         finally:
             self.connection_pool.release_connection(conn)
     
-    # def get_chat_details(self, chat_id):
-    #     # conn = self.connection_pool.get_connection()
-    #     # cursor = conn.cursor()
-    #     # add_user_to_chat_info = """
-    #     #     SELECT chat_users (
-    #     #         chat_id,
-    #     #         user_id
-    #     #     ) VALUES (?, ?)
-    #     # """
-    #     try:
-    #        pass
-    #     except Exception as e:
-    #         print(f'add_chat_participant: {e}')
-    #         raise e
-    #     finally:
-    #         self.connection_pool.release_connection(conn)
+    def remove_chat_participant(self, chat_id, user_session_id):
+        remove_user_from_chat_query = """
+            DELETE FROM chat_users  
+            WHERE 
+                chat_users.user_session_id = ?
+                AND chat_users.chat_id = ?
+        """
+        try:
+            conn = self.connection_pool.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(remove_user_from_chat_query, (chat_id, user_session_id))
+            conn.commit()
+        except Exception as e:
+            print(f'add_chat_participant: {e}')
+            raise e
+        finally:
+            self.connection_pool.release_connection(conn)
+    
+    

@@ -1,15 +1,12 @@
 import os
 import sys
-import uuid
+import time
 import socket
 from serializers import WebSocketSerializer, CryptoSerializer
-from handlers import AuthHandler, CreateChatHandler, ChatOptionHandler, GroupChatHandler, ConnectionsHandler
-from services import MessagesService, FileStorageService, ChatubaApiService, TokenService
+from services import MessagesService, FileStorageService, AuthService, TokenService
+from handlers import AuthHandler, CreateChatHandler, GroupChatHandler, ConnectionsHandler, PrivateChatHandler
 
-
-
-
-chatuba_api_service = ChatubaApiService('http://localhost:8080/api/v1')
+auth_service = AuthService('https://localhost:8080/api/v1')
 
 crypto_serializer = CryptoSerializer()
 websocket_serializer = WebSocketSerializer()
@@ -24,21 +21,21 @@ token_service = TokenService(crypto_serializer)
 filestorage_service=FileStorageService()
 
 auth_handler = AuthHandler(
-    chatuba_api_service, 
+    auth_service, 
 )
 
-create_chat_handler=CreateChatHandler(
-  chat_api=chatuba_api_service
+create_chat_handler = CreateChatHandler(
+    messages_service
 )
-chat_options_handler=ChatOptionHandler(
-    chatuba_api=chatuba_api_service
-) 
 
+group_chat_handler = GroupChatHandler(
+    messages_service, 
+    filestorage_service
+)
 
-group_chat_handler=GroupChatHandler(
-    token_service=token_service,
-    msg_service=messages_service,
-    file_storage_service=filestorage_service
+private_chat_handler = PrivateChatHandler(
+    messages_service,
+    filestorage_service
 )
 
 def show_main_menu():
@@ -62,17 +59,20 @@ def show_main_menu():
             print('Invalid choice')
 
 def show_chat_options(token):
-    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    conn.connect(('localhost', 9090))
-    # --- do handshake ---
-    messages_service.send_handshake_message(conn)
-    user_data = token_service.decode_token(token)
-    messages_service.receive_handshake_message(conn)
-    # -- tries to connct ---
-    conn_service = ConnectionsHandler(conn, messages_service)
-    conn_service.connection_handler(user_data)
+    user_data = {}
 
-    while True:
+    def apply_exponential_backoff(retry_attempt):
+        backoff_time = 5 * (2 ** (retry_attempt - 1))
+        time.sleep(backoff_time)
+
+    def connect():
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn.connect(('localhost', 9090))
+        messages_service.send_handshake_message(conn)
+        messages_service.receive_handshake_message(conn)
+        return conn
+    
+    def handle_options(conn, user_data):
         print('1. create group chat')
         print('2. list group chats')
         print('3. list available users')
@@ -81,16 +81,43 @@ def show_chat_options(token):
         choice = input('Enter choice: ')
     
         if choice == '1':
-            create_chat_handler.handle_chat_creation(token)
+            create_chat_handler.handle_chat_creation(conn, user_data)
         elif choice == '2':
-            chat_info = chat_options_handler.handle_group_chats_options(token)
-            group_chat_handler.handle_join_group_chat(conn, chat_info, token)
+            group_chat_handler.handle_show_group_chats(conn, user_data)
         elif choice == '3':
-            pass
-            # current_chat_info=chat_options_handler.handle_available_users_chats(current_user)
-            # group_chat_handler.handle_join_private_chat(current_chat_info, current_user)
-        
+            private_chat_handler.handle_show_private_chats(conn, user_data)
         os.system('cls')
+
+    
+    retry_attempt = 0
+    while True:
+        try:
+            conn = connect()
+            user_data = token_service.decode_token(token)
+            # -- tries to connct ---
+            conn_service = ConnectionsHandler(conn, messages_service)
+            conn_service.connection_handler(user_data)
+            handle_options(conn, user_data)
+            if (retry_attempt >  3):
+                break
+        except (
+            ConnectionResetError, 
+            ConnectionAbortedError, 
+            ConnectionRefusedError, 
+            ConnectionError
+            ) as e:
+            input(e)
+            retry_attempt+=1
+            apply_exponential_backoff(retry_attempt)    
+        except Exception as e:
+            input(e)
+            break
+        finally:
+            auth_service.signup(user_data['username'])
+
+    
+       
+    
 
 
 show_main_menu()

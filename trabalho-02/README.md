@@ -12,22 +12,24 @@
 Os alunos devem trabalhar em equipes para implementar um sistema distribuído que atenda aos seguintes requisitos:
 
 - **Escopo do Sistema**: Criar uma aplicação cliente-servidor para uma rede fictícia de compartilhamento de informações, com funcionalidades como:
-    - Cadastro de usuários.
-    - Envio e recebimento de mensagens em tempo real (chat).
-    - Transferência de arquivos entre clientes.
-    - Registros e logs de atividade.
+    - Cadastro de usuários. - x
+    - Envio e recebimento de mensagens em tempo real (chat).- x
+    - Transferência de arquivos entre clientes. - x
+    - Registros e logs de atividade. - +/- falta rotas de exportação do relatório
 - **Requisitos Técnicos**:
-   - Implementação de sockets TCP e UDP.
-   - Suporte para comunicação simultânea de múltiplos clientes (concorrência com threads ou processos).
-   - Mecanismos básicos de autenticação (login/senha).
-   - Tratamento de erros e reconexão em caso de falhas.
-   - Criptografia básica para troca de mensagens (ex.: AES ou RSA).
-   - Controle de tráfego (ex.: limitar o número de conexões simultâneas por cliente).
+   - Implementação de sockets TCP e UDP. - x
+   - Suporte para comunicação simultânea de múltiplos clientes (concorrência com threads ou processos). -x
+   - Mecanismos básicos de autenticação (login/senha). -x
+   - Tratamento de erros e reconexão em caso de falhas. - +/- falta melhorar usos de excepts e add lógica de retry de connexão
+   - Criptografia básica para troca de mensagens (ex.: AES ou RSA). - x
+   - Controle de tráfego (ex.: limitar o número de conexões simultâneas por cliente). -x cada usser só pode ter até 3 conexões simultâneas (sessôes)
 - **Funcionalidades Extras (Opcional)**:
-   - Chat em grupo (multicast).
+   - Chat em grupo (multicast). - x
    - Suporte para comunicação em tempo real com áudio ou vídeo (bônus).
-   - Interface gráfica simples (ex.: Tkinter, PyQt ou similar).
-
+   - Interface gráfica simples (ex.: Tkinter, PyQt ou similar). - x Temos um client em cmd
+-------------------------------
+falta implementar ssl no http server
+falta implementar multithread no http server
 ## 2. Linguagens de programação permitidas
 
 O grupo pode escolher qualquer linguagem de programação dentre as listadas abaixo:
