@@ -61,7 +61,7 @@ class RestService:
         except Exception as e:
             print(f'store_private_message_request: {e}')
 
-    def create_group_chat_request(self, user_id, session_id, chat_id, chat_name):
+    def create_group_chat_request(self, session_id, chat_id, chat_name):
         try:
             response = requests.post(
                 f'{self.host}/chats',
@@ -71,7 +71,6 @@ class RestService:
                 },
                 json={
                     'chat_id': chat_id,
-                    'user_id': user_id,
                     'chat_name': chat_name,
                     'session_id': session_id,
                 },
@@ -124,3 +123,21 @@ class RestService:
             return response.json()
         except Exception as e:
             print(f'left_group_chat_request: {e}')
+    
+    def disconnect_user_request(self, user_id, session_id):
+        try:
+            response = requests.delete(
+                f'{self.host}/users',
+                headers={
+                    'Authorization': f'Bearer {self.token}'
+                },
+                json={
+                    'user_id': user_id,
+                    'session_id': session_id
+                },
+                verify=False
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f'disconnect_user_request: {e}')

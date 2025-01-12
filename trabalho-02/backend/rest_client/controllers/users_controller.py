@@ -59,10 +59,14 @@ class UsersController:
     def signoff(self, request):
         try:
             token = request['headers'].get('Authorization').split(' ')[-1]
+            request_body = request['body']
             decoded_token = self.token_service.decode_token(token)
             if (not decoded_token or 'id' not in decoded_token or 'session_id' not in decoded_token):
                 return 401, {'message': 'unauthorized'}
-            self.users_repository.update_user_session_status(decoded_token['id'], decoded_token['session_id'], 'INACTIVE')
+            found_user = self.users_repository.find_user_by_session_id(request_body['session_id'])
+            if not found_user:
+                return 404, {'message': 'user not found'}
+            self.users_repository.update_user_session_status(request_body['user_id'], request_body['session_id'], 'INACTIVE')
             return 200, {'message': 'signedoff successfully'}
         except Exception as e:
             print(e)

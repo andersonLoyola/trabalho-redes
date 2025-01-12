@@ -113,7 +113,7 @@ def show_chat_options(token):
             input(e)
             break
         finally:
-            auth_service.signup(user_data['username'])
+            auth_service.signoff(user_data['id'], user_data['session_id'], token)
 
     
        

@@ -90,7 +90,7 @@ class GroupChatHandler(BaseHandler):
                 formatted_message = self._format_received_message(response)
                 print(formatted_message)
             elif response['action'] == 'left_group_connection':
-                print(response)
+                input(response)
                 break
         
     def _connect(self):

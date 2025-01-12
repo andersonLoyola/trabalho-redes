@@ -38,7 +38,8 @@ class ConnectionsService:
                 'sessions': {
                     session_id: {
                         'status': 'active',
-                        'conn': client_socket
+                        'conn': client_socket,
+                        'chat_id': ''
                     }
                 }
             }
@@ -93,11 +94,13 @@ class ConnectionsService:
         self.users[user_id]['sessions'][session_id]['status'] = status
         self.users[user_id]['sessions'][session_id]['chat_id'] = chat_id
 
-    def show_private_chats(self):
+    def show_private_chats(self, decoded_data):
         show_private_chats = []
         for conn_id, conn_data in self.users.items():
             for session_id, session_data in conn_data['sessions'].items():
-                if session_data['status'] == 'active':
+                if session_id == decoded_data['session_id']:
+                    pass
+                elif session_data['status'] == 'active' and session_data['chat_id'] == decoded_data['session_id']:
                     show_private_chats.append({
                         'user_id': conn_id,
                         'user_name': conn_data['user_name'],
@@ -109,13 +112,21 @@ class ConnectionsService:
                 'chats': show_private_chats
             }
     
-    def remove_user_active_session(self, user_id, client_socket):
+    def find_user_active_session(self, user_id, client_socket):
         if user_id not in self.users:
-            return
+            return None
         user_sessions = self.users[user_id]['sessions']
         for session_id, socket in user_sessions.items():
             if socket == client_socket:
-                del user_sessions[session_id]
-                return
-        
-   
+                return {
+                    'user_id': user_id,
+                    'session_id': session_id,
+                }
+        return None
+    
+    def remove_user_active_session(self, user_id, session_id):
+        if user_id not in self.users:
+            return 
+        elif session_id not in self.users[user_id]['sessions']:
+            return
+        del self.users[user_id]['sessions'][session_id]

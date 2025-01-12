@@ -149,7 +149,7 @@ class UsersRepository:
                 SELECT 
                     u.id as user_id,
                     u.username as user_name,
-                    us.session_id as session_id,
+                    us.session_id as session_id
                 FROM 
                     user_sessions us
                     INNER JOIN users u
@@ -158,10 +158,34 @@ class UsersRepository:
                     us.session_id = ?      
             """
             cursor = conn.cursor()
-            cursor.execute(query, (session_id))
+            cursor.execute(query, (session_id,))
             return cursor.fetchone()
         except Exception as e:
-            print(f'count_user_sessions: {e}')
+            print(f'find_user_by_session_id: {e}')
+            raise e
+        finally:
+            self.connection_pool.release_connection(conn)
+            
+   
+    def find_user_sessions(self, user_id):
+        try:
+            conn = self.connection_pool.get_connection()
+            cursor = conn.cursor()
+            query  = """
+                SELECT 
+                    us.session_id as session_id
+                FROM 
+                    user_sessions us
+                  
+                WHERE
+                    us.user_id = ?      
+            """
+            cursor = conn.cursor()
+            cursor.execute(query, (user_id,))
+            found_sessions = cursor.fetchall()
+            return [session['session_id'] for session in found_sessions]
+        except Exception as e:
+            print(f'find_user_sessions: {e}')
             raise e
         finally:
             self.connection_pool.release_connection(conn)

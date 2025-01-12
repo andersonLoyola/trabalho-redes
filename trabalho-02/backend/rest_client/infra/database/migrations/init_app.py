@@ -79,18 +79,24 @@ def execute():
             user_session_id VARCHAR(36) NOT NULL,
             chat_id VARCHAR(36) NOT NULL,
             FOREIGN KEY(chat_id) REFERENCES chats(id),
-            FOREIGN KEY(user_session_id) REFERENCES user_sessions(session_id)
+            FOREIGN KEY(user_session_id) REFERENCES user_sessions(session_id),
             UNIQUE(user_session_id, chat_id)
         )
     """
-
-    create_detailed_chats_info_view = """
-    """
-    
-    create_detailed_chats_info_view = """
+    group_messages_indexes = """
+        CREATE INDEX idx_sender_receiver
+        ON group_messages(receiver_id, sender_id)
     """
 
-    cursor.execute("BEGIN")
+    user_sessions_session_id_index = """
+        CREATE INDEX idx_session_id
+        ON user_sessions(session_id)
+    """
+
+    user_sessions_user_id_index = """
+        CREATE INDEX idx_user_id
+        ON user_sessions(user_id)
+    """
 
     try:
         cursor.execute(create_users_table)
@@ -100,9 +106,12 @@ def execute():
         cursor.execute(create_group_messages_table)
         cursor.execute(create_user_sessions_table)
         cursor.execute(user_chats_query)
-        cursor.execute("COMMIT")
+        cursor.execute(group_messages_indexes)
+        cursor.execute(user_sessions_session_id_index)
+        cursor.execute(user_sessions_user_id_index)
+        connection.commit()
     except Exception as e:
-        cursor.execute("ROLLBACK")
+        connection.rollback()
         print(e)
         raise e
     

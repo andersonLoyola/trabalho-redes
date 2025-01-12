@@ -8,7 +8,7 @@ class FileStorageService():
         self.port = port
 
     def _generate_attachment_link(self, file_path):
-        return f'http://{self.host}:{self.port}/{file_path}'
+        return f'https://{self.host}:{self.port}/{file_path}'
 
     def save_file(self, user_id, attachment_data):
         file_name = attachment_data['file_name']

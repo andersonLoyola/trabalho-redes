@@ -54,11 +54,10 @@ class ActionsQueue:
         except Exception as e:
             traceback.print_exc()
             print(e)
-
+    
     def create_group_chat_action(self, message):
         try:
             response = self.rest_service.create_group_chat_request(
-                message['user_id'],
                 message['session_id'],
                 message['chat_id'],
                 message['chat_name']
@@ -67,6 +66,18 @@ class ActionsQueue:
         except Exception as e:
             traceback.print_exc()
             print(e)
+
+    def disconnect_user_action(self, message):
+        try:
+            response = self.rest_service.disconnect_user_request(
+                message['user_id'],
+                message['session_id'],
+            )
+            return response
+        except Exception as e:
+            traceback.print_exc()
+            print(e)
+            
 
     def run(self):
         while(True):
@@ -88,6 +99,9 @@ class ActionsQueue:
                     print(f'{action['action']}: {response}')
                 elif action['action'] == 'left_group_chat':
                     response = self.left_group_chat_action(action)
+                    print(f'{action['action']}: {response}')
+                elif action['action'] == 'disconnect_user':
+                    response = self.disconnect_user_action(action)
                     print(f'{action['action']}: {response}')
             except Exception as e:
                 traceback.print_exc()

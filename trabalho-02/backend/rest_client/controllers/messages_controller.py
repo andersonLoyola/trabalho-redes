@@ -45,6 +45,30 @@ class MessagesController:
             print(e)
             traceback.print_exc()  
             return 500, {"message": "internal server error"}
+    
+    def get_group_chat_messages(self, request):
+        try:
+            token = request['headers'].get('Authorization').split(' ')[-1]
+            request_body = request['body']
+            decoded_token = self.token_service.decode_token(token)
+            if (not decoded_token or 'id' not in decoded_token ):
+                return 401, {'message': 'unauthorized'}
+            user_sessions =  self.users_repository.find_user_sessions(request_body['user_id'])
+            found_chat = self.chats_repository.get_chat_by_id(request_body['chat_id'])
+            if found_chat == None:
+                return 404, {'message': 'chat not found'}
+            found_group_messages =self.messages_repository.get_group_messages(
+                user_sessions,
+                request_body['chat_id'],
+            )
+            return 200, {   
+                "message": "success",
+                "group_messages": found_group_messages
+            }
+        except Exception as e:
+            print(e)
+            traceback.print_exc()  
+            return 500, {"message": "internal server error"}
    
     def store_private_chat_messages(self, request):
         try:

@@ -16,7 +16,7 @@ class PrivateChatHandler(BaseHandler):
         os.system('cls')
         while True:
             show_private_chats_action = {
-                'user_id': self.current_user_info['session_id'],
+                'session_id': self.current_user_info['session_id'],
                 'action': 'show_private_chats'
             }
             self.msg_service.send_message(self.conn, show_private_chats_action)

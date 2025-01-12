@@ -27,8 +27,8 @@ class ChatController:
         response = self.group_chats_service.show_group_chats()
         self.messages_service.send_message(client_socket, response)
     
-    def handle_show_private_chats_request(self, client_socket):
-        response = self.connections_service.show_private_chats()
+    def handle_show_private_chats_request(self, decoded_data, client_socket):
+        response = self.connections_service.show_private_chats(decoded_data)
         self.messages_service.send_message(client_socket, response)
 
     def handle_send_group_message_request(self, decoded_data, client_socket):
@@ -55,7 +55,7 @@ class ChatController:
                     pass
                 elif 'error' not in response:
                     self.messages_service.send_message(response['conn'], decoded_data)
-                    store_message_action['receivers'].append(response['user_id'])
+                    store_message_action['receivers'].append(subscriber_data['session_id'])
                 else:
                     print(response['error'])
             self.actions_queue.add_action(store_message_action)
@@ -113,7 +113,7 @@ class ChatController:
         if found_user != None:
             self.connections_service.update_session_status(user_id, session_id, 'busy', receiver_session)
             self.messages_service.send_message(client_socket, {'success': True})
-        
+    
     # maybe we dont really need this 
     def handle_left_private_chat(self, decoded_data, client_socket):
         self.connections_service.update_session_status(decoded_data['user_id'], decoded_data['session_id'], 'active', '')
@@ -131,10 +131,16 @@ class ChatController:
     def handle_disconnect_request(self, decoded_data, client_socket):
         if decoded_data == None:
             return
+        data = None
         if 'user_id' in decoded_data:
-            self.connections_service.remove_user_active_session(decoded_data['user_id'], client_socket)
+            data = self.connections_service.find_user_active_session(decoded_data['user_id'], client_socket)
         elif 'sender_id' in decoded_data:
-            self.connections_service.remove_user_active_session(decoded_data['sender_id'], client_socket)
+            data = self.connections_service.find_user_active_session(decoded_data['sender_id'], client_socket)
+        if data == None:
+            return
+        self.connections_service.remove_user_active_session(data['user_id'], data['session_id'])
+        data['action'] = 'disconnect_user'
+        self.actions_queue.add_action(data)
 
     def handle_ping(self, client_socket):
         self.messages_service.send_message(client_socket, 'PONG')
@@ -161,7 +167,7 @@ class ChatController:
                 elif decoded_data['action'] == 'left_private_cha':
                     self.handle_left_private_chat(decoded_data, client_socket)
                 elif decoded_data['action'] == 'show_private_chats':
-                    self.handle_show_private_chats_request(client_socket)
+                    self.handle_show_private_chats_request(decoded_data, client_socket)
                 elif decoded_data['action'] == 'private_message':
                     self.handle_send_private_message_request(decoded_data, client_socket)
                 elif decoded_data['action'] == 'join_group_chat':
@@ -172,15 +178,12 @@ class ChatController:
                     self.handle_left_chat_request(decoded_data, client_socket)
                 elif decoded_data['action'] == 'disconnect':
                     self.handle_disconnect_request(client_socket)
-                    return
-    
-                
+                    return    
         except (ConnectionResetError, ConnectionAbortedError) as e:
             traceback.print_exc()
             self.handle_disconnect_request(decoded_data, client_socket)
             print(e)
             return 
-
         except Exception as e:
             traceback.print_exc()   
             self.handle_disconnect_request(decoded_data, client_socket)
