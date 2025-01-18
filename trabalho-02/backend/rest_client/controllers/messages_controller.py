@@ -1,6 +1,7 @@
 import traceback
+from .base_controller import BaseController
 
-class MessagesController:
+class MessagesController(BaseController):
 
     def  __init__(
             self, 
@@ -10,33 +11,46 @@ class MessagesController:
             crypto_serializer,
             token_service,
             file_storage_service,
-
+            clients_repository
         ):
         self.token_service = token_service
         self.chats_repository = chats_repository
         self.users_repository = users_repository
-        self.crypto_serializer = crypto_serializer
         self.messages_repository = messages_repository
         self.file_storage_service = file_storage_service
+        super().__init__(crypto_serializer, clients_repository)
 
     def store_group_chat_messages(self, request):
         try:
-            token = request['headers'].get('Authorization').split(' ')[-1]
-            request_body = request['body']
-            decoded_token = self.token_service.decode_token(token)
-            if (not decoded_token or 'id' not in decoded_token ):
-                return 401, {'message': 'unauthorized'}
+            self.ensure_source(request['headers'].get('x-api-key'))
+            attachment_data = ''
+            request_body = self.decrypt_body(request['body'])
             found_chat = self.chats_repository.get_chat_by_id(request_body['chat_id'])
             if found_chat == None:
                 return 404, {'message': 'chat not found'}
             if 'attachment' in request_body and request_body['attachment'] != '':
-                request_body['attachment']['file_path'] = self.file_storage_service.save_file(request_body['sender_id'], request_body['attachment'])
+                attachment_data = {
+                    **request_body['attachment']
+                }
+                attachment_data['file_path'] = self.file_storage_service.save_file(
+                    request_body['sender_id'], 
+                    request_body['attachment']
+                )
+                attachment_data = self.crypto_serializer.encrypt_values(attachment_data, [])
+            encrypted_message = self.crypto_serializer.encrypt_values(request_body, [
+                'sender_id',
+                'chat_id',
+                'receivers',
+                'init_vector',
+                'attachment'
+            ])
             self.messages_repository.create_group_message(
-                request_body['sender_id'],
-                request_body['chat_id'],
-                request_body['receivers'],
-                request_body['message'],
-                request_body['attachment']
+                encrypted_message['sender_id'],
+                encrypted_message['chat_id'],
+                encrypted_message['receivers'],
+                encrypted_message['message'],
+                encrypted_message['init_vector'],
+                attachment_data
             )
             return 200, {   
                 "message": "success",
@@ -48,11 +62,8 @@ class MessagesController:
     
     def get_group_chat_messages(self, request):
         try:
-            token = request['headers'].get('Authorization').split(' ')[-1]
+            self.ensure_source(request['headers'].get('x-api-key'))
             request_body = request['body']
-            decoded_token = self.token_service.decode_token(token)
-            if (not decoded_token or 'id' not in decoded_token ):
-                return 401, {'message': 'unauthorized'}
             user_sessions =  self.users_repository.find_user_sessions(request_body['user_id'])
             found_chat = self.chats_repository.get_chat_by_id(request_body['chat_id'])
             if found_chat == None:
@@ -72,21 +83,30 @@ class MessagesController:
    
     def store_private_chat_messages(self, request):
         try:
-            token = request['headers'].get('Authorization').split(' ')[-1]
-            request_body = request['body']
-            decoded_token = self.token_service.decode_token(token)
-            if (not decoded_token or 'id' not in decoded_token ):
-                return 401, {'message': 'unauthorized'}
-            # found_user = self.users_repository.get_user_by_session_id(request_body['session_id'])
-            # if found_user == None:
-            #     return 404, {'message': 'chat not found'}
+            self.ensure_source(request['headers'].get('x-api-key'))
+            request_body = self.decrypt_body(request['body'])
+            attachment_data = ''
             if 'attachment' in request_body and request_body['attachment'] != '':
-                request_body['attachment']['file_path'] = self.file_storage_service.save_file(request_body['sender_id'], request_body['attachment'])
+                attachment_data = {
+                    **request_body['attachment']
+                }
+                attachment_data['file_path'] = self.file_storage_service.save_file(
+                    request_body['sender_id'], 
+                    request_body['attachment']
+                )
+                attachment_data = self.crypto_serializer.encrypt_values(attachment_data, [])
+            encrypted_message = self.crypto_serializer.encrypt_values(request_body, [
+                'sender_id',
+                'receiver_id',
+                'attachment',
+                'init_vector'
+            ])
             self.messages_repository.create_private_message(
-                request_body['sender_id'],
-                request_body['receiver_id'],
-                request_body['message'],
-                request_body['attachment']
+                encrypted_message['sender_id'],
+                encrypted_message['receiver_id'],
+                encrypted_message['message'],
+                encrypted_message['init_vector'],
+                attachment_data
             )
             return 200, {   
                 "message": "success",

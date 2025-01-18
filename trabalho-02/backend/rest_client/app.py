@@ -5,7 +5,7 @@ import ssl
 from infra.http import HTTPRequestHandler, HTTPRequestSerializer, HTTPRouter, ThreadedHTTPServer
 from infra.database.conn import ConnectionPool
 
-from repository import UsersRepository, ChatsRepository, MessagesRepository
+from repository import UsersRepository, ChatsRepository, MessagesRepository, ClientsRepository
 from controllers import UsersController, ChatsController, MessagesController
 from routes import TestRoutes, UserRoutes, ChatsRoutes, MessagesRoutes
 from services import TokenService, FileStorageService
@@ -26,6 +26,7 @@ conn_pool = ConnectionPool(chatuba_db_path)
 chats_repository = ChatsRepository(conn_pool)
 users_repository = UsersRepository(conn_pool)
 messages_repository = MessagesRepository(conn_pool)
+clients_repository = ClientsRepository(conn_pool)
 # --------- Serializers ----------------
 crypto_serializer = CryptoSerializer(secret_key)
 # --------- Services -------------------
@@ -39,6 +40,7 @@ messages_controller = MessagesController(
     crypto_serializer,
     token_service,
     file_storge_service,
+    clients_repository
 )
 chats_controller = ChatsController(
     users_repository,
@@ -46,12 +48,13 @@ chats_controller = ChatsController(
     messages_repository,
     crypto_serializer,
     token_service,
-    file_storge_service,
+    clients_repository
 )
 users_controller = UsersController(
     users_repository, 
     crypto_serializer, 
-    token_service
+    token_service,
+    clients_repository
 ) 
 # --------- infra ------------
 http_request_parser = HTTPRequestSerializer()

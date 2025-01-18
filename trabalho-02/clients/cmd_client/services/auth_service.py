@@ -1,40 +1,60 @@
+import json
+import urllib3
 import requests
 import traceback
+from serializers import CryptoSerializer
 from requests.exceptions import HTTPError, RequestException
-import urllib3
 
 class AuthService:
 
-    def __init__(self, api_endpoint):
+    api_endpoint: str
+    api_key: str
+    crypto_serializer: CryptoSerializer
+
+    def __init__(self, api_endpoint: str, api_key: str, crypto_serializer: CryptoSerializer):
+        self.api_key = api_key
         self.api_endpoint = api_endpoint
+        self.crypto_serializer = crypto_serializer
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    def signin(self, username, password):
+    def signin(self, username: str, password: str):
         try:
+            encrypted_request_body = self.crypto_serializer.encrypt(json.dumps({ 
+                'username': username, 
+                'password': password 
+            }).encode('utf-8'))
             response = requests.post(  
                 f'{self.api_endpoint}/users/login',
                 headers= {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'x-client-id': 'cmd-client',
+                    'x-api-key': self.api_key
                 },
-                json={ 'username': username, 'password': password },
-                verify=False   #as the ssl certificate is currently self-signed it won't be truted             
+                json=encrypted_request_body,
+                verify=False   #as the ssl certificate is currently self-signed it won't be trusted             
             )
             response.raise_for_status()
             return response.json()
         except (HTTPError, RequestException) as e:
-            return {'error': f'POST /users/logir: {e}'}
+            return {'error': f'POST /users/login: {e}'}
         except Exception as e:
             traceback.print_exc()
-            print(e)
+            print(str(e))
     
-    def signup(self, username, password):
+    def signup(self, username: str, password: str):
         try:
+            encrypted_request_body = self.crypto_serializer.encrypt(json.dumps({ 
+                'username': username, 
+                'password': password 
+            }).encode('utf-8'))
             response = requests.post(  
                 f'{self.api_endpoint}/users/signup',
                 headers={
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'x-client-id': 'cmd-client',
+                    'x-api-key': self.api_key
                 },
-                json={ 'username': username, 'password': password },
+                json=encrypted_request_body,
                 verify=False   #as the ssl certificate is currently self-signed it won't be truted                                     
             )
             response.raise_for_status()
@@ -43,17 +63,25 @@ class AuthService:
             return {'error': f'POST /users/signup : {e}'}
         except Exception as e:
             traceback.print_exc()
-            print(e)
+            print(str(e))
     
-    def signoff(self, user_id, session_id, token):
+    def signoff(self, user_id: str, session_id: str):
         try:
+            encrypted_request_body = self.crypto_serializer.encrypt(json.dumps(
+                { 
+                    'user_id': user_id, 
+                    'session_id': session_id 
+                    }
+                ).encode('utf-8')
+            )
             response = requests.post(  
                 f'{self.api_endpoint}/users/signoff',
                 headers={
                     'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {token}'
+                    'x-api-key': self.api_key,
+                    'x-client-id': 'cmd-client'
                 },
-                json={ 'user_id': user_id, 'session_id': session_id },
+                json=encrypted_request_body,
                 verify=False   #as the ssl certificate is currently self-signed it won't be truted                                     
             )
             response.raise_for_status()
@@ -62,7 +90,7 @@ class AuthService:
             return {'error': f'POST /users/signup : {e}'}
         except Exception as e:
             traceback.print_exc()
-            print(e)
+            print(str(e))
             
   
 

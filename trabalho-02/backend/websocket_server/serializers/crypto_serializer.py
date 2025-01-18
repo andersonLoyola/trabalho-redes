@@ -20,12 +20,41 @@ class CryptoSerializer():
         ciphertext = cipher_enc.encrypt(padded_data)
         encoded_ciphertext = base64.b64encode(ciphertext).decode('utf-8')
         encoded_iv = base64.b64encode(iv).decode('utf-8')
-        return { 'data': encoded_ciphertext, 'init_Vector': encoded_iv }
+        return { 'data': encoded_ciphertext, 'init_vector': encoded_iv }
     
     def decrypt(self, encoded_data):
         decoded_ciphertext = base64.b64decode(encoded_data['data'].encode('utf-8'))
-        decoded_iv = base64.b64decode(encoded_data['init_Vector'].encode('utf-8'))
+        decoded_iv = base64.b64decode(encoded_data['init_vector'].encode('utf-8'))
         cipher_dec = AES.new(self.secret_key, AES.MODE_CBC, decoded_iv)
         decrypted_padded_data = cipher_dec.decrypt(decoded_ciphertext)
         decrypted_data = unpad(decrypted_padded_data, AES.block_size)
+        return decrypted_data
+    
+    def encrypt_values(self, data, ignored_keys = ['id']):
+        iv = get_random_bytes(16)  
+        cipher_enc = AES.new(self.secret_key, AES.MODE_CBC, iv)
+        encoded_data = {}
+        for key, value in data.items():
+            if key in ignored_keys:
+                encoded_data[key] = value
+                continue
+            padded_value = pad(value.encode('utf-8'), AES.block_size)
+            ciphertext = cipher_enc.encrypt(padded_value)
+            encoded_ciphertext = base64.b64encode(ciphertext).decode('utf-8')
+            encoded_data[key] = encoded_ciphertext
+        encoded_iv = base64.b64encode(iv).decode('utf-8')
+        return {
+                **encoded_data, 
+                'init_vector': encoded_iv 
+            }
+    
+    def decrypt_values(self, encoded_data, init_vector, ignored_keys = ['id']):
+        decoded_iv = base64.b64decode(init_vector.encode('utf-8'))
+        cipher_dec = AES.new(self.secret_key, AES.MODE_CBC, decoded_iv)
+        decrypted_data = {}
+        for key, value in encoded_data.items:
+            if key not in ignored_keys:
+                decoded_ciphertext = base64.b64decode(value.encode('utf-8'))
+                decrypted_padded_data = cipher_dec.decrypt(decoded_ciphertext)
+                decrypted_data[key] = unpad(decrypted_padded_data, AES.block_size) 
         return decrypted_data

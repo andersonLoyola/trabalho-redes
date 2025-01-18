@@ -1,25 +1,34 @@
 import uuid
 import traceback
+from.base_controller import BaseController
 
-class UsersController: 
+class UsersController(BaseController): 
+    
     def __init__(
             self, 
             users_repository,   
             crypto_serializer,
             token_service,
+            clients_repository
         ):
         self.token_service = token_service
         self.users_repository = users_repository
-        self.crypto_serializer = crypto_serializer
+        super().__init__(crypto_serializer, clients_repository)
 
     def login(self, request):
         session_id =  ''
         try:
-            request_body = request['body']
+            self.ensure_source(request['headers'].get('x-api-key'))
+            request_body = self.decrypt_body(request['body'])
             foundUser = self.users_repository.get_user(request_body['username'])
             if foundUser is None:
                 return (404, { "message": "user does not exists"})
-            if foundUser['password'] != request_body['password']:
+            decrypted_user_data = self.crypto_serializer.decrypt_values(foundUser, foundUser['init_vector'], [
+                'id',
+                'init_vector', 
+                'username'
+            ])
+            if decrypted_user_data['password'] != request_body['password']:
                 return (401, { "message": "username or password does not matches"})
             del foundUser['password']
             user_sessions = self.users_repository.count_user_sessions(foundUser['id'])
@@ -35,9 +44,8 @@ class UsersController:
             token = self.token_service.generate_token(foundUser)
             return (
                 200,
-                { 
-                    "message": "success", 
-                    "token": token,
+                {
+                    'token': token
                 }
             )
         except Exception as e:
@@ -46,11 +54,13 @@ class UsersController:
     
     def signup(self, request):
         try:
-            request_body = request['body']
+            self.ensure_source(request['headers'].get('x-api-key'))
+            request_body = self.decrypt_body(request['body'])
             foundUser = self.users_repository.get_user(request_body['username'])
-            if foundUser is not None:
+            if foundUser != None:
                 return 409, { "message": "user already exists"}
-            self.users_repository.create_user(request_body)
+            created_user = self.crypto_serializer.encrypt_values(request_body, ['username'])
+            self.users_repository.create_user(created_user)
             return 201, { "message": "success"}
         except Exception as e:
             print(e)
@@ -58,15 +68,16 @@ class UsersController:
 
     def signoff(self, request):
         try:
-            token = request['headers'].get('Authorization').split(' ')[-1]
-            request_body = request['body']
-            decoded_token = self.token_service.decode_token(token)
-            if (not decoded_token or 'id' not in decoded_token or 'session_id' not in decoded_token):
-                return 401, {'message': 'unauthorized'}
+            self.ensure_source(request['headers'].get('x-api-key'))
+            request_body = self.decrypt_body(request['body'])
             found_user = self.users_repository.find_user_by_session_id(request_body['session_id'])
             if not found_user:
                 return 404, {'message': 'user not found'}
-            self.users_repository.update_user_session_status(request_body['user_id'], request_body['session_id'], 'INACTIVE')
+            self.users_repository.update_user_session_status(
+                request_body['user_id'], 
+                request_body['session_id'], 
+                'INACTIVE'
+            )
             return 200, {'message': 'signedoff successfully'}
         except Exception as e:
             print(e)

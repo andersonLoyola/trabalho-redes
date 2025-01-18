@@ -1,4 +1,3 @@
-import traceback
 import threading
 
 class ConnectionsService: 
@@ -59,28 +58,25 @@ class ConnectionsService:
         return {'action': 'connection', 'success': True}
 
     def get_user_session(self, user_id, session_id, chat_id):
-        try: 
-            if user_id not in self.users:
-                return {
-                    'error': f'user {user_id} not found'
-                }
-            elif session_id not in self.users[user_id]['sessions']:
-                return {
-                    'error': f'user {user_id} not found'
-                }
-            user_session = self.users[user_id]['sessions'][session_id]
-            if user_session['status'] != 'active' and user_session['chat_id'] != chat_id:
-                return {
-                    'error': f'session {session_id} from user: {user_id} is not available'
-                }
+        if user_id not in self.users:
             return {
-                'success': True,
-                'user_id': user_id,
-                'conn': self.users[user_id]['sessions'][session_id]['conn']
+                'error': f'user {user_id} not found'
             }
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
+        elif session_id not in self.users[user_id]['sessions']:
+            return {
+                'error': f'user {user_id} not found'
+            }
+        user_session = self.users[user_id]['sessions'][session_id]
+        if user_session['status'] != 'active' and user_session['chat_id'] != chat_id:
+            return {
+                'error': f'session {session_id} from user: {user_id} is not available'
+            }
+        return {
+            'success': True,
+            'user_id': user_id,
+            'conn': self.users[user_id]['sessions'][session_id]['conn']
+        }
+    
 
     def update_session_status(self, user_id, session_id, status, chat_id):
         if user_id not in self.users:
@@ -98,13 +94,14 @@ class ConnectionsService:
         show_private_chats = []
         for conn_id, conn_data in self.users.items():
             for session_id, session_data in conn_data['sessions'].items():
-                if session_id == decoded_data['session_id']:
+                if session_id == decoded_data['session_id'] or session_data['status'] != 'active':
                     pass
-                elif session_data['status'] == 'active' and session_data['chat_id'] == decoded_data['session_id']:
-                    show_private_chats.append({
+                elif 'chat_id' in session_data and session_data['chat_id'] != decoded_data['session_id']:
+                    pass
+                show_private_chats.append({
                         'user_id': conn_id,
-                        'user_name': conn_data['user_name'],
-                        'session_id': session_id
+                        'session_id': session_id,
+                        'user_name': conn_data['user_name']
                     })
         return {
                 'success': True,
@@ -116,8 +113,8 @@ class ConnectionsService:
         if user_id not in self.users:
             return None
         user_sessions = self.users[user_id]['sessions']
-        for session_id, socket in user_sessions.items():
-            if socket == client_socket:
+        for session_id, session_data in user_sessions.items():
+            if session_data['conn'] == client_socket:
                 return {
                     'user_id': user_id,
                     'session_id': session_id,

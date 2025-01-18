@@ -5,6 +5,7 @@ from .base_handler import BaseHandler
 
 
 class GroupChatHandler(BaseHandler):
+    
     conn = {}
     msg_service = {}
     current_user_info = {}
@@ -19,6 +20,7 @@ class GroupChatHandler(BaseHandler):
         while True:
             show_group_chats_action = {
                 'user_id': self.current_user_info['id'],
+                'session_id': self.current_user_info['session_id'],
                 'action': 'show_group_chats'
             }
             self.msg_service.send_message(self.conn,  show_group_chats_action)
@@ -66,7 +68,7 @@ class GroupChatHandler(BaseHandler):
 
     def _on_file_upload_request(self):
             os.system('cls')
-            file_path = input('enter file path:')
+            file_path = input('enter file path: ')
             attachment = self.file_storage_service.load_file(file_path)
             return attachment
     
@@ -126,7 +128,7 @@ class GroupChatHandler(BaseHandler):
             os.system('cls')
             while True:
                 attachment = ''
-                message = str(input(" "))
+                message = str(input())
                 if message == '\\q':
                     message = ''
                     input(self._left_group_chat())
@@ -134,8 +136,9 @@ class GroupChatHandler(BaseHandler):
                 elif message == '\\fu':
                     attachment = self._on_file_upload_request()
                     message = ''
-                message = self._format_group_message_to_send(message, attachment)
-                self.msg_service.send_message(self.conn, message)
-                sys.stdout.write("\033[F\033[K") # JUST CLEARS THE INPUT LINE
+                if len(message.strip()) > 0 or attachment != '':     
+                    message = self._format_group_message_to_send(message, attachment)
+                    self.msg_service.send_message(self.conn, message)
+                    sys.stdout.write("\033[F\033[K") # JUST CLEARS THE INPUT LINE
         except Exception as e:
             self.handle_error(e)

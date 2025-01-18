@@ -15,6 +15,7 @@ class ChatController:
         self.group_chats_service = group_chats_service
         self._lock = threading.Lock()
 
+    # ----------------- GROUP CHAT RELATED OPERATIONS ---------------
     def handle_create_group_chat_request(self, client_socket, decoded_data):
         response = self.group_chats_service.create_group_chat(
             decoded_data['user_id'], 
@@ -27,10 +28,6 @@ class ChatController:
         response = self.group_chats_service.show_group_chats()
         self.messages_service.send_message(client_socket, response)
     
-    def handle_show_private_chats_request(self, decoded_data, client_socket):
-        response = self.connections_service.show_private_chats(decoded_data)
-        self.messages_service.send_message(client_socket, response)
-
     def handle_send_group_message_request(self, decoded_data, client_socket):
         with self._lock:
             chat_id = decoded_data['chat_id']
@@ -38,7 +35,7 @@ class ChatController:
             if found_chat == None:
                 self.messages_service.send_message(
                     client_socket, 
-                    {'error': 'chat not found', 'action': 'group_message'}
+                    { 'error': 'chat not found', 'action': 'group_message' }
                 )
                 return 
             store_message_action = {
@@ -59,7 +56,31 @@ class ChatController:
                 else:
                     print(response['error'])
             self.actions_queue.add_action(store_message_action)
-       
+    
+    def handle_create_group_chat(self, decoded_data, client_socket):
+        response = self.group_chats_service.create_group_chat(
+            decoded_data['user_id'],
+            decoded_data['session_id'],
+            decoded_data['chat_name']    
+        )
+        self.messages_service.send_message(client_socket, response)
+
+    def handle_join_group_chat_request(self, decoded_data, client_socket):
+        user_id = decoded_data['user_id']
+        chat_id = decoded_data['chat_id']
+        session_id = decoded_data['session_id']
+        group_chat = self.group_chats_service.get_chat_connection(chat_id)
+        if group_chat != None:
+            self.connections_service.update_session_status(user_id, session_id, 'busy', chat_id)
+            response = self.group_chats_service.add_user_chat_session(user_id, session_id, chat_id)
+            self.messages_service.send_message(client_socket, response)
+        
+    def handle_left_chat_request(self, decoded_data, client_socket):
+        response = self.group_chats_service.left_group_connection(decoded_data)
+        self.connections_service.update_session_status(decoded_data['user_id'], decoded_data['session_id'], 'active', '')
+        self.messages_service.send_message(client_socket, response)
+
+    # ------------------- PRIVATE CHAT RELATED OPERATIONS ---------------
     def handle_send_private_message_request(self, decoded_data, client_socket): 
         found_user = self.connections_service.get_user_session(
             decoded_data['receiver_id'], 
@@ -82,26 +103,7 @@ class ChatController:
             'attachment': decoded_data['attachment'],
             'action': 'private_message'
         })
-
-    def handle_create_group_chat(self, decoded_data, client_socket):
-        response = self.group_chats_service.create_group_chat(
-            decoded_data['user_id'],
-            decoded_data['session_id'],
-            decoded_data['chat_name']    
-        )
-        self.messages_service.send_message(client_socket, response)
-
-    def handle_join_group_chat_request(self, decoded_data, client_socket):
-        user_id = decoded_data['user_id']
-        chat_id = decoded_data['chat_id']
-        session_id = decoded_data['session_id']
-        group_chat = self.group_chats_service.get_chat_connection(chat_id)
-        if group_chat != None:
-            self.connections_service.update_session_status(user_id, session_id, 'busy', chat_id)
-            response = self.group_chats_service.add_user_chat_session(user_id, session_id, chat_id)
-            self.messages_service.send_message(client_socket, response)
-        
-    # Review this later TODO:
+    
     def handle_join_private_chat_request(self, decoded_data, client_socket):
         user_id = decoded_data['user_id']
         session_id = decoded_data['session_id']
@@ -112,20 +114,22 @@ class ChatController:
 
         if found_user != None:
             self.connections_service.update_session_status(user_id, session_id, 'busy', receiver_session)
-            self.messages_service.send_message(client_socket, {'success': True})
+            self.messages_service.send_message(client_socket, {'success': True, 'action': 'join_private_chat'})
     
-    # maybe we dont really need this 
     def handle_left_private_chat(self, decoded_data, client_socket):
         self.connections_service.update_session_status(decoded_data['user_id'], decoded_data['session_id'], 'active', '')
-        self.messages_service.send_message(client_socket, {'success': True})
+        self.messages_service.send_message(client_socket, {'success': True, 'action': 'left_private_chat'})
 
-    def handle_left_chat_request(self, decoded_data, client_socket):
-        response = self.group_chats_service.left_group_connection(decoded_data)
-        self.connections_service.update_session_status(decoded_data['user_id'], decoded_data['session_id'], 'active', '')
+    def handle_show_private_chats_request(self, decoded_data, client_socket):
+        response = self.connections_service.show_private_chats(decoded_data)
         self.messages_service.send_message(client_socket, response)
-
+    
+    # ------------------- CONNECTION RELATED OPERATIONS -----------------
     def handle_connection_request(self, decoded_data, client_socket):
         response = self.connections_service.connect_user(decoded_data, client_socket)
+        if 'error' in response:
+            self.messages_service.send_message(client_socket, response)
+            client_socket.disconnect()
         self.messages_service.send_message(client_socket, response)
 
     def handle_disconnect_request(self, decoded_data, client_socket):
@@ -142,9 +146,6 @@ class ChatController:
         data['action'] = 'disconnect_user'
         self.actions_queue.add_action(data)
 
-    def handle_ping(self, client_socket):
-        self.messages_service.send_message(client_socket, 'PONG')
-
     def handle_client(self, client_socket):
         try:
             self.messages_service.receive_handshake_message(client_socket)
@@ -152,8 +153,8 @@ class ChatController:
                 decoded_data = self.messages_service.receive_message(client_socket)
                 if not decoded_data:
                     pass
-                elif decoded_data == 'PING':
-                    self.handle_ping(client_socket)
+                # elif decoded_data == 'PING':
+                #     self.handle_ping(client_socket)
                 elif decoded_data['action'] == 'connection':
                     self.handle_connection_request(decoded_data, client_socket)
                 elif decoded_data['action'] == 'show_group_chats':
@@ -177,18 +178,23 @@ class ChatController:
                 elif decoded_data['action'] == 'left_connection':
                     self.handle_left_chat_request(decoded_data, client_socket)
                 elif decoded_data['action'] == 'disconnect':
-                    self.handle_disconnect_request(client_socket)
+                    self.handle_disconnect_request(decoded_data, client_socket)
                     return    
         except (ConnectionResetError, ConnectionAbortedError) as e:
-            traceback.print_exc()
-            self.handle_disconnect_request(decoded_data, client_socket)
-            print(e)
-            return 
+            if decoded_data and 'session_id' in decoded_data:
+                print(f'{decoded_data['session_id']}: {str(e)}')
+            else:
+                traceback.print_exc()
+                print(e)
+            self.handle_disconnect_request(decoded_data, client_socket) 
         except Exception as e:
-            traceback.print_exc()   
+            if decoded_data and 'session_id' in decoded_data:
+                print(f'{decoded_data['session_id']}: {str(e)}')
+            else:
+                traceback.print_exc()
+                print(e)
             self.handle_disconnect_request(decoded_data, client_socket)
-            print(e)
-            return
+
 
         
            

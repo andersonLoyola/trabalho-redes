@@ -28,7 +28,7 @@ class CreateChatHandler(BaseHandler):
             self._create_chat_input(current_chat_info)
             response = self.messages_service.receive_message(self.conn)
             if not response:
-                pass
+                continue
             elif 'error' in response:
                 input(response['error'])
             else: 

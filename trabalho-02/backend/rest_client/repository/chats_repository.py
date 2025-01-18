@@ -20,6 +20,7 @@ class ChatsRepository():
             ) VALUES (?,?)
         """
         try:
+            cursor.execute('BEGIN;')
             cursor.execute(create_chat_query, (chat_id, chat_name))
             cursor.execute(create_chat_users_query, (chat_id, session_id))
             conn.commit()

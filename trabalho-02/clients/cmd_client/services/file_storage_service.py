@@ -3,7 +3,7 @@ import base64
 
 class FileStorageService():
 
-    def load_file(self, file_path):
+    def load_file(self, file_path: str):
         try:
             file_size = os.path.getsize(file_path)
             _, file_extension = os.path.splitext(file_path)

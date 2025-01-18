@@ -1,3 +1,4 @@
 from .chats_repository import ChatsRepository
-from .messages_repository import MessagesRepository
 from .users_repository import UsersRepository
+from .clients_repository import ClientsRepository
+from .messages_repository import MessagesRepository

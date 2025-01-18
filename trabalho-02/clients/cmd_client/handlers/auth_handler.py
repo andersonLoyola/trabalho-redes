@@ -19,11 +19,6 @@ class AuthHandler:
         response = self.api_service.signup(username, password)
         return response
         
-    """
-        TODO:
-        Currently there is no way to break free form this, i think we
-        should implement a option to left this whenever want
-    """ 
     def handle_login(self):
         while True:
             response = self._login_request()
@@ -31,7 +26,7 @@ class AuthHandler:
                 os.system('cls')
                 return response['token']
             else:
-                print(f'{response['error']}')
+                input(f'{response['error']}')
 
     def handle_signup(self):
         while True:

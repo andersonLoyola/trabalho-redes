@@ -49,7 +49,7 @@ class MessagesService():
         encrypted_message = self.websocket_serializer.decode_socket_frame(message_parts)     
         decrypted_message = self.crypto_serializer.decrypt(encrypted_message)
         return json.loads(decrypted_message)
-
+        
     def send_message(self, client_socket, message):
         message_bytes = json.dumps(message).encode('utf-8')
         cyphered_message_bytes = self.crypto_serializer.encrypt(message_bytes)

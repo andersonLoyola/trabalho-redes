@@ -8,25 +8,37 @@ class UsersRepository:
     def create_user(self, user_data):
         username = user_data['username']
         password = user_data['password']
+        init_vector = user_data['init_vector']
         try:
             conn = self.connection_pool.get_connection()
             cursor = conn.cursor()
             user_id = str(uuid.uuid4())
-            query = """
+            init_vector_id = str(uuid.uuid4())
+            create_user_query = """
                 INSERT INTO users (
                     id,
                     username,
-                    password 
+                    password,
+                    init_vector_id 
                 )
                 VALUES (
+                    ?,
                     ?,
                     ?,
                     ?
                 )
             """
-            cursor.execute(query, (user_id, username, password))
+            create_init_vector_query = """
+                INSERT INTO init_vectors (
+                    id,
+                    init_vector
+                ) VALUES (?, ?)
+            """
+            cursor.execute(create_user_query, (user_id, username, password, init_vector_id))
+            cursor.execute(create_init_vector_query, (init_vector_id, init_vector))
             conn.commit()
         except Exception as e:
+            cursor.execute('ROLLBACK;')
             print(f'create_user: {e}')
             raise e
         finally:
@@ -37,8 +49,16 @@ class UsersRepository:
             conn = self.connection_pool.get_connection()
             cursor = conn.cursor()
             query  = f"""
-                SELECT * 
-                FROM users
+                SELECT 
+                    u.id,
+                    u.username,
+                    u.password,
+                    iv.init_vector 
+                FROM users u
+                INNER JOIN 
+                    init_vectors iv
+                ON 
+                    iv.id = u.init_vector_id 
                 WHERE username = ?
             """
             cursor = conn.cursor()
@@ -166,7 +186,6 @@ class UsersRepository:
         finally:
             self.connection_pool.release_connection(conn)
             
-   
     def find_user_sessions(self, user_id):
         try:
             conn = self.connection_pool.get_connection()

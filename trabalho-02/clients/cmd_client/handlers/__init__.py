@@ -4,3 +4,4 @@ from .group_chat_handler import GroupChatHandler
 from .create_chat_handler import CreateChatHandler
 from .connections_handler import ConnectionsHandler
 from .private_chat_handler import PrivateChatHandler
+from .private_messages_report_handler import PrivateMessagesReportHandler

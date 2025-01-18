@@ -17,19 +17,19 @@ class HTTPRequestSerializer():
             key, value = param.split('=')
             query[key] = value
         return query
-    """
-        TODO: notice that we are currently not handling cases where the content length is set a s
-        "0", a typical case is when we do a POST request from postman withOUT A body
-    """       
+   
     def _parse_body(self, request):
         content_length = request.headers.get("content-length")
+        content_type = request.headers.get('content-type') 
         if not content_length or int(content_length) == 0:
             return {}
         length = int(content_length)
         rfile_str = request.rfile.read(length).decode("utf8") #AKA BODY STRING
+        if content_type != 'application/json':
+            return rfile_str
         return json.loads(rfile_str)
    
-    # TODO: see better eay to do it later
+   
     # @IMPORTANT: api urls must follow /api/v1/<resource>/<identifier />
     def rest_path_parser(self, path):
         entries = path.split('/')

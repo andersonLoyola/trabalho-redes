@@ -20,11 +20,11 @@ class CryptoSerializer():
         ciphertext = cipher_enc.encrypt(padded_data)
         encoded_ciphertext = base64.b64encode(ciphertext).decode('utf-8')
         encoded_iv = base64.b64encode(iv).decode('utf-8')
-        return { 'data': encoded_ciphertext, 'init_Vector': encoded_iv }
+        return { 'data': encoded_ciphertext, 'init_vector': encoded_iv }
     
     def decrypt(self, encoded_data):
         decoded_ciphertext = base64.b64decode(encoded_data['data'].encode('utf-8'))
-        decoded_iv = base64.b64decode(encoded_data['init_Vector'].encode('utf-8'))
+        decoded_iv = base64.b64decode(encoded_data['init_vector'].encode('utf-8'))
         cipher_dec = AES.new(self.secret_key, AES.MODE_CBC, decoded_iv)
         decrypted_padded_data = cipher_dec.decrypt(decoded_ciphertext)
         decrypted_data = unpad(decrypted_padded_data, AES.block_size)
