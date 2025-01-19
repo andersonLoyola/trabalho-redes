@@ -64,10 +64,13 @@ class GroupChatsService:
                     'error': 'chat not found',
                     'action': 'join_chat'
                 }
-            self.group_chats[chat_id]['subscribers'].append({
-                'user_id': user_id,
-                'session_id': session_id
-            })
+            chat_subscribers = self.group_chats[chat_id]['subscribers']
+            found_participant = next((subscriber for subscriber in chat_subscribers if subscriber['user_id'] == user_id), None)
+            if not found_participant:
+                self.group_chats[chat_id]['subscribers'].append({
+                    'user_id': user_id,
+                    'session_id': session_id
+                })
             self.actions_service.add_action({
                 'session_id': session_id,
                 'chat_id': chat_id,
@@ -89,7 +92,6 @@ class GroupChatsService:
             if user_session['session_id'] == session_id and user_session['user_id'] == user_id:
                 del user_session
                 return 
-    
     
     def get_chat_connection(self, conn_id):
         try:
