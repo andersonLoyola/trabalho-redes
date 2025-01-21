@@ -1,0 +1,10 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "C:\\Users\\loyol\\Documents\\trabalho-redes\\trabalho-02\\backend\\websocket_server\\database\\chatuba_db.sqlite3",
+            "name": "chatuba_db"
+        }
+    ]
+}

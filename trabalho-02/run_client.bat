@@ -1,2 +1,3 @@
-powershell .\venv\Scripts\activate.ps1
-python client.py
+powershell .\venv\Scripts\activate
+
+python \clients\cmd_client\app.py

@@ -1,2 +1,4 @@
-powershell .\venv\Scripts\activate.ps1
-python server.py
+powershell .\venv\Scripts\activate
+
+python .\backend\http_server\app.py &
+python .\websocket_server\app.py &

@@ -1,0 +1,8 @@
+{
+    "python.defaultInterpreterPath": "./venv/Scripts/python.exe",
+    "cSpell.words": [
+        "pkcs",
+        "unpad"
+    ],
+    "sqltools.connections": [] // Para Windows
+}
