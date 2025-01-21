@@ -40,8 +40,6 @@ class WebSocketSerializer():
 
     """
 
- 
-
     def parse_headers(self, request):
         headers = {}
         request_chunks = request.split('\r\n')

@@ -32,7 +32,7 @@ class WebSocketSerializer():
     
     def _extract_bit_sequence(self, byte_sequence, position, quantity):
         shifted_sequence = byte_sequence >> position
-        mask = (1 << quantity) -1
+        mask = (1 << quantity) - 1
         return shifted_sequence & mask
 
     def _generate_4_byte_key(self):

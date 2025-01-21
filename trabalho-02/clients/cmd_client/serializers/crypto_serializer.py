@@ -10,8 +10,8 @@ from Crypto.Random import get_random_bytes
 
 class CryptoSerializer(): 
 
-    def __init__(self):
-        self.secret_key = base64.b64decode('TXshgL49Sfj0GXjEU7IWjpY/9+pVHAmD3eW/29hRK1U=')
+    def __init__(self, secret_key):
+        self.secret_key = base64.b64decode(secret_key)
 
     def encrypt(self, data):
         iv = get_random_bytes(16)  

@@ -1,28 +1,19 @@
-import os
 import socket
 import threading
-from dotenv import load_dotenv
 
 from helpers import ActionsQueue
 from controllers import ChatController
 from serializers import WebSocketSerializer, CryptoSerializer
 from services import MessagesService, ConnectionsService, RestService, GroupChatsService 
-
-load_dotenv()
-
-secret_key = os.getenv('SECRET_KEY')
-api_endpoint= os.getenv('api_endpoint')
-api_key = os.getenv('api_key')
-app_host = os.getenv('chatuba_app_host')
-app_port = os.getenv('chatuba_app_port')
+import config
 
 # ----------------------- SERIALIZERS -----------------------
 web_socket_serializer = WebSocketSerializer()
-crypto_serializer = CryptoSerializer(secret_key)
+crypto_serializer = CryptoSerializer(config.crypto_secret_key)
 # ----------------------- SERVICES ---------------------------
 rest_service = RestService(
-    api_endpoint,
-    api_key
+    config.http_server_api_endpoint,
+    config.websocket_server_api_key
 )
 actions_queue = ActionsQueue(
     rest_service,
@@ -53,9 +44,9 @@ group_chats_service.load_group_chats_from_service()
 # ----------------------- handler init -----------------------
 def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((app_host, int(app_port)))
+    server_socket.bind((config.websocket_server_host, int(config.websocket_server_port)))
     server_socket.listen()
-    print(f'Server is listening on port {app_port}')
+    print(f'Server is listening on port {config.websocket_server_port}')
 
     while True:
         client_socket, addr = server_socket.accept()        

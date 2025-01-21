@@ -1,14 +1,15 @@
-import traceback
 import threading
+import traceback
+
 class ChatController:
 
     def __init__(
-            self,
-            actions_queue,  
-            connections_service,      
-            messages_service,
-            group_chats_service
-        ):
+        self,
+        actions_queue,  
+        connections_service,      
+        messages_service,
+        group_chats_service
+    ):
         self.actions_queue = actions_queue
         self.messages_service = messages_service
         self.connections_service = connections_service

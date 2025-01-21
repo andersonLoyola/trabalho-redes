@@ -77,7 +77,6 @@ class ConnectionsService:
             'conn': self.users[user_id]['sessions'][session_id]['conn']
         }
     
-
     def update_session_status(self, user_id, session_id, status, chat_id):
         if user_id not in self.users:
             return {
@@ -92,17 +91,16 @@ class ConnectionsService:
 
     def show_private_chats(self, decoded_data):
         show_private_chats = []
+        current_session_id = decoded_data['session_id']
         for conn_id, conn_data in self.users.items():
             for session_id, session_data in conn_data['sessions'].items():
-                if session_id == decoded_data['session_id'] or session_data['status'] != 'active':
-                    pass
-                elif 'chat_id' in session_data and session_data['chat_id'] != decoded_data['session_id']:
-                    pass
-                show_private_chats.append({
-                        'user_id': conn_id,
-                        'session_id': session_id,
-                        'user_name': conn_data['user_name']
-                    })
+                current_chat = session_data['chat_id']
+                if current_chat == current_session_id or (current_chat == '' and session_id != current_session_id) :
+                    show_private_chats.append({
+                            'user_id': conn_id,
+                            'session_id': session_id,
+                            'user_name': conn_data['user_name']
+                        })
         return {
                 'success': True,
                 'action': 'show_private_chats', 

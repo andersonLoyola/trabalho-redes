@@ -3,6 +3,17 @@ import base64
 
 class FileStorageService():
 
+
+    def write_file(self, user_id: str, file_name: str, text: str):
+        try:
+            directory_path = f'downloads/{user_id}'
+            os.makedirs(directory_path, exist_ok=True)
+            file_path = f'{directory_path}/{file_name}'
+            with open(file_path, 'w') as file:
+                file.write(text)
+        except Exception as e:
+            print(e)
+
     def load_file(self, file_path: str):
         try:
             file_size = os.path.getsize(file_path)

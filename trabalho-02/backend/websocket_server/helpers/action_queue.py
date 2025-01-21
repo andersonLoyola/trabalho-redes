@@ -75,29 +75,29 @@ class ActionsQueue:
         return response
       
     def run(self):
-        while(True):
+        while True:
             try:
                 action = self.actions.get()
                 if action is None:
                     pass
                 if action['action'] == 'group_message':
                     response = self.store_group_message_action(action)
-                    print(f'{action['action']}: {response}')
+                    print(f'[{action['sender_id']}][{action['action']}][{action['chat_id']}]: {response}')
                 elif action['action'] == 'private_message':
                     response = self.store_private_message_action(action)
-                    print(f'{action['action']}: {response}')
+                    print(f'[{action['sender_id']}][{action['action']}][{action['receiver_id']}]: {response}')
                 elif action['action'] == 'join_group_chat':
                     response = self.join_group_chat_action(action)
-                    print(f'{action['action']}: {response}')
+                    print(f'[{action['session_id']}][{action['action']}][{action['chat_id']}]: {response}')
                 elif action['action'] == 'store_group_chat':
                     response = self.create_group_chat_action(action)
-                    print(f'{action['action']}: {response}')
+                    print(f'[{action['session_id']}][{action['action']}][{action['chat_id']}]: {response}')
                 elif action['action'] == 'left_group_chat':
                     response = self.left_group_chat_action(action)
-                    print(f'{action['action']}: {response}')
+                    print(f'[{action['session_id']}][{action['action']}][{action['chat_id']}]: {response}')
                 elif action['action'] == 'disconnect_user':
                     response = self.disconnect_user_action(action)
-                    print(f'{action['action']}: {response}')
+                    print(f'[{action['user_id']}][{action['action']}][{action['session_id']}]: {response}')
             except Exception as e:
                 print(self._log_error(action, e))
             finally:
