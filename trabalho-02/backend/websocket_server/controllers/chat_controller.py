@@ -154,8 +154,6 @@ class ChatController:
                 decoded_data = self.messages_service.receive_message(client_socket)
                 if not decoded_data:
                     pass
-                # elif decoded_data == 'PING':
-                #     self.handle_ping(client_socket)
                 elif decoded_data['action'] == 'connection':
                     self.handle_connection_request(decoded_data, client_socket)
                 elif decoded_data['action'] == 'show_group_chats':

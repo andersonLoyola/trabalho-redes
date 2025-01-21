@@ -48,6 +48,8 @@ def show_main_menu():
         choice = input('Enter choice: ')
         if choice == '1':
             token = auth_handler.handle_login()
+            if not token:
+                continue
             user_data = token_service.decode_token(token)
             ShowChatOptions(user_data, conn_handler).execute()
             os.system('cls')

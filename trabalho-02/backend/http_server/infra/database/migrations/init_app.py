@@ -4,7 +4,6 @@
 import uuid
 import sqlite3
 
-# For simplicity purposes we will leave each copy of a same msg with the same init vector
 def execute(): 
     connection = sqlite3.connect('../db.sqlite3')
     connection.isolation_level = None
@@ -16,7 +15,7 @@ def execute():
             id VARCHAR(36) PRIMARY KEY NOT NULL UNIQUE,
             username VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
-            init_vector_id TEXT NOT NULL UNIQUE,
+            init_vector_id VARCHAR(36) NOT NULL UNIQUE,
             FOREIGN KEY(init_vector_id) REFERENCES init_vectors(id) 
         );
     """
@@ -46,7 +45,7 @@ def execute():
             content TEXT,
             attachment_id VARCHAR(36) DEFAULT '',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            init_vector_id TEXT NOT NULL,
+            init_vector_id VARCHAR(36) NOT NULL,
             FOREIGN KEY(sender_id) REFERENCES user_sessions(session_id),
             FOREIGN KEY(receiver_id) REFERENCES user_sessions(session_id),
             FOREIGN KEY(attachment_id) REFERENCES attachments(id)
@@ -62,9 +61,10 @@ def execute():
             content TEXT,
             attachment_id VARCHAR(36) DEFAULT '',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            init_vector_id TEXT NOT NULL, 
+            init_vector_id VARCHAR(36) NOT NULL, 
             FOREIGN KEY(chat_id) REFERENCES chats(id)
             FOREIGN KEY(attachment_id) REFERENCES attachments(id)
+            FOREIGN KEY(init_vector_id) REFERENCES init_vectors(id)
             FOREIGN KEY(sender_id) REFERENCES user_sessions(session_id)
             FOREIGN KEY(receiver_id) REFERENCES user_sessions(session_id)
         );
@@ -72,14 +72,14 @@ def execute():
 
     create_attachments_table = """
         CREATE TABLE IF NOT EXISTS attachments (
-        id VARCHAR(36) PRIMARY KEY NOT NULL UNIQUE,
-        file_format VARCHAR(255) NOT NULL,
-        file_size VARCHAR(255) NOT NULL,
-        file_name VARCHAR(255) NOT NULL,
-        init_vector_id TEXT NOT NULL,
-        file_path TEXT NOT NULL,
-        FOREIGN KEY(init_vector_id) REFERENCES init_vectors(id)
-    );
+            id VARCHAR(36) PRIMARY KEY NOT NULL UNIQUE,
+            file_format VARCHAR(255) NOT NULL,
+            file_size VARCHAR(255) NOT NULL,
+            file_name VARCHAR(255) NOT NULL,
+            init_vector_id VARCHAR(36) NOT NULL,
+            file_path TEXT NOT NULL,
+            FOREIGN KEY(init_vector_id) REFERENCES init_vectors(id)
+        );
     """
 
     user_chats_query = """

@@ -11,32 +11,7 @@ class PrivateChatHandler(BaseHandler):
     def __init__(self, msg_service, file_storage_service):
         self.msg_service = msg_service
         self.file_storage_service = file_storage_service
-        
-    def _show_private_chat_options(self):
-        os.system('cls')
-        while True:
-            show_private_chats_action = {
-                'session_id': self.current_user_info['session_id'],
-                'user_id': self.current_user_info['id'],
-                'action': 'show_private_chats'
-            }
-            self.msg_service.send_message(self.conn, show_private_chats_action)
-            response = self.msg_service.receive_message(self.conn)
-            if 'error' in response:
-                input(response['error'])
-            elif response['action'] == 'show_private_chats':
-                print('0. go back;')
-                private_chats = response['chats']
-                for index in range(len(private_chats)):
-                    print(f'{index + 1}. {private_chats[index]['user_name']}')
-                choice = int(input('chat option: '))
-                if choice == 0:
-                    return
-                elif choice - 1 <= len(private_chats):
-                    return private_chats[choice-1]
-                else:
-                    input('invalid option')
-                        
+                             
     def _format_private_message_to_send(self, message, attachment):
         if attachment:
              return {
@@ -108,12 +83,34 @@ class PrivateChatHandler(BaseHandler):
         self.conn = conn
         self.current_user_info = current_user_info
         while True:
-            choosen_chat = self._show_private_chat_options()
-            self.current_chat_info = {
-                'receiver_id': choosen_chat['user_id'],
-                'receiver_session': choosen_chat['session_id']
+            os.system('cls')
+            show_private_chats_action = {
+                'session_id': self.current_user_info['session_id'],
+                'user_id': self.current_user_info['id'],
+                'action': 'show_private_chats'
             }
-            self.handle_join_private_chat()
+            self.msg_service.send_message(self.conn, show_private_chats_action)
+            response = self.msg_service.receive_message(self.conn)
+            if 'error' in response:
+                input(response['error'])
+            elif response['action'] == 'show_private_chats':
+                print('0. go back;')
+                private_chats = response['chats']
+                for index in range(len(private_chats)):
+                    print(f'{index + 1}. {private_chats[index]['user_name']}')
+                choice = int(input('chat option: '))
+                if choice == 0:
+                    return
+                elif choice - 1 <= len(private_chats):
+                    choosen_chat = private_chats[choice - 1]
+                    self.current_chat_info = {
+                        'receiver_id': choosen_chat['user_id'],
+                        'receiver_session': choosen_chat['session_id']
+                    }
+                    self.handle_join_private_chat()
+                else:
+                    input('invalid option')
+        
     
     def handle_join_private_chat(self):
         self._connect() # TODO: ADD ERROR HANDLING LATER 
@@ -126,7 +123,7 @@ class PrivateChatHandler(BaseHandler):
             if message == '\\q':
                 message = ''
                 self._left_private_chat()
-                return
+                break
             elif message == '\\fu':
                 attachment = self._on_file_upload_request()
                 message = ''

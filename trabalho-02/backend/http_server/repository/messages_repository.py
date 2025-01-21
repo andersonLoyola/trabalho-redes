@@ -214,7 +214,7 @@ class MessagesRepository:
             ON aiv.id = at.init_vector_id 
         WHERE
             gm.chat_id = ?
-            AND gm.receiver_id in (?, ?, ?)
+            AND gm.receiver_id in ({','.join(['?' for _ in user_sessions])})
         ORDER BY gm."timestamp"
         """
         try:

@@ -52,7 +52,8 @@ class ConnectionsService:
         
         self.users[user_id]['sessions'][session_id] = {
             'status': 'active',
-            'conn': client_socket
+            'conn': client_socket,
+            'chat_id': '',
         }
         
         return {'action': 'connection', 'success': True}

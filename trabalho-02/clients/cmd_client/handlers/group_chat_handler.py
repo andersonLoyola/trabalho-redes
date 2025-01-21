@@ -105,7 +105,7 @@ class GroupChatHandler(BaseHandler):
                     if choice == 0:
                         return
                     elif choice - 1 <= len(group_chats):
-                        self.current_chat_info =  group_chats[choice-1]
+                        self.current_chat_info = group_chats[choice-1]
                         self.handle_join_group_chat()
                     else:
                         input('invalid option')

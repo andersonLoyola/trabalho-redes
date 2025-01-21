@@ -5,23 +5,16 @@ class AuthHandler:
     def __init__(self, api_service):
         self.api_service = api_service
     
-    def _login_request(self):
-        os.system('cls')
-        username = str(input('Enter username: '))
-        password = getpass.getpass("Enter your password: ")
-        response = self.api_service.signin(username, password)
-        return response
-        
-    def _sign_up_request(self):
-        os.system('cls')
-        username = input('Enter username: ')
-        password = getpass.getpass('Enter your password: ')
-        response = self.api_service.signup(username, password)
-        return response
         
     def handle_login(self):
         while True:
-            response = self._login_request()
+            os.system('cls')
+            print('type \\q to quit')
+            username = str(input('Enter username: '))
+            if username == '\\q':
+                return
+            password = getpass.getpass("Enter your password: ")
+            response = self.api_service.signin(username, password)
             if 'error' not in response:
                 os.system('cls')
                 return response['token']
@@ -30,7 +23,13 @@ class AuthHandler:
 
     def handle_signup(self):
         while True:
-            response = self._sign_up_request()
+            os.system('cls')
+            print('type \\q to quit')
+            username = input('Enter username: ')
+            if username == '\\q':
+                return
+            password = getpass.getpass('Enter your password: ')
+            response = self.api_service.signup(username, password)
             if 'error' not in response:
                 os.system('cls')
                 return response
