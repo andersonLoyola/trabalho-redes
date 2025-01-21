@@ -3,7 +3,7 @@ import base64
 import struct
 import hashlib
 
-class WebSocketSerializer():
+class WebSocketSerializer:
 
     def parse_headers(self, request):
         headers = {}
@@ -46,9 +46,8 @@ class WebSocketSerializer():
         _ = self._extract_bit(first_byte, 4) # RSV3, NOT USED
         _ = self._extract_bit_sequence(first_byte, 0, 4) #  Bits 4 up to 7 are for opcode, not used since we only work with txt
       
-        masking_bit = self._extract_bit(second_byte, 7) # we are always masking it
-        payload_length = self._extract_bit_sequence(second_byte, 0, 7)
         masking_bit = self._extract_bit(second_byte, 7)
+        payload_length = self._extract_bit_sequence(second_byte, 0, 7)
         
         index = 2
         if payload_length == 126:
